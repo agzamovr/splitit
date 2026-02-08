@@ -1,1 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --font-display: 'Fraunces', serif;
+  --font-body: 'DM Sans', sans-serif;
+
+  --color-cream: #FDF8F3;
+  --color-cream-dark: #F5EDE4;
+  --color-espresso: #2C1810;
+  --color-espresso-light: #4A3228;
+  --color-terracotta: #C45C3E;
+  --color-terracotta-light: #E8845F;
+  --color-sage: #7A9E7E;
+  --color-sage-light: #A8C5AB;
+  --color-amber: #E5A84B;
+  --color-amber-light: #F5CC7F;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--color-cream);
+  color: var(--color-espresso);
+}
+
+/* Receipt paper texture */
+.receipt-paper {
+  background: linear-gradient(180deg, #fff 0%, #FDFAF7 100%);
+  box-shadow:
+    0 1px 2px rgba(44, 24, 16, 0.04),
+    0 4px 8px rgba(44, 24, 16, 0.04),
+    0 12px 24px rgba(44, 24, 16, 0.06);
+}
+
+/* Torn paper edge effect */
+.receipt-edge {
+  --mask: radial-gradient(circle at 8px 50%, transparent 6px, #000 6.5px);
+  -webkit-mask-image: var(--mask);
+  mask-image: var(--mask);
+  -webkit-mask-size: 16px 100%;
+  mask-size: 16px 100%;
+  -webkit-mask-repeat: repeat-y;
+  mask-repeat: repeat-y;
+}
+
+/* Input focus glow */
+.input-glow:focus {
+  box-shadow:
+    0 0 0 3px rgba(196, 92, 62, 0.15),
+    inset 0 1px 2px rgba(44, 24, 16, 0.06);
+}
+
+/* Stagger animation for list items */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  opacity: 0;
+}
+
+/* Pulse for remaining amount */
+@keyframes softPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.pulse-attention {
+  animation: softPulse 2s ease-in-out infinite;
+}
+
+/* Number input spinners removal */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
