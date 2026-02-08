@@ -1,5 +1,11 @@
 import { useState } from "react";
 
+interface Expense {
+  id: string;
+  description: string;
+  price: string;
+}
+
 interface Person {
   id: string;
   name: string;
@@ -13,16 +19,26 @@ const SAMPLE_PEOPLE: Person[] = [
   { id: "4", name: "Riley", amount: "" },
 ];
 
+const formatPrice = (value: number) =>
+  value.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
 export function ExpenseForm() {
-  const [totalAmount, setTotalAmount] = useState("120.00");
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [manualTotal, setManualTotal] = useState("");
   const [people, setPeople] = useState<Person[]>(SAMPLE_PEOPLE);
+
+  const hasItems = expenses.length > 0;
+  const total = hasItems
+    ? expenses.reduce((sum, e) => sum + (parseFloat(e.price) || 0), 0)
+    : parseFloat(manualTotal) || 0;
 
   const coveredAmount = people.reduce((sum, person) => {
     const amount = parseFloat(person.amount) || 0;
     return sum + amount;
   }, 0);
-
-  const total = parseFloat(totalAmount) || 0;
   const remaining = total - coveredAmount;
   const isBalanced = Math.abs(remaining) < 0.01;
   const isOver = remaining < -0.01;
@@ -52,6 +68,30 @@ export function ExpenseForm() {
     setPeople((prev) => prev.filter((p) => p.id !== id));
   };
 
+  const addExpense = () => {
+    const price = expenses.length === 0 ? manualTotal : "";
+    setExpenses((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), description: "", price },
+    ]);
+  };
+
+  const removeExpense = (id: string) => {
+    setExpenses((prev) => prev.filter((e) => e.id !== id));
+  };
+
+  const updateExpenseDescription = (id: string, description: string) => {
+    setExpenses((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, description } : e))
+    );
+  };
+
+  const updateExpensePrice = (id: string, price: string) => {
+    setExpenses((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, price } : e))
+    );
+  };
+
   return (
     <div className="min-h-screen bg-cream px-4 py-6">
       {/* Header */}
@@ -66,23 +106,117 @@ export function ExpenseForm() {
 
       {/* Receipt Card */}
       <div className="receipt-paper rounded-2xl overflow-hidden">
-        {/* Total Amount Section */}
+        {/* Items Section */}
         <div className="px-5 pt-5 pb-4 border-b border-dashed border-espresso/10">
-          <label className="block text-xs font-medium text-espresso-light/60 uppercase tracking-wider mb-2">
-            Total Bill
-          </label>
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-display font-semibold text-espresso/40">
-              $
+          <span className="block text-xs font-medium text-espresso-light/60 uppercase tracking-wider mb-3">
+            Items
+          </span>
+
+          {expenses.length > 0 && (
+            <ul className="space-y-2 mb-3">
+              {expenses.map((expense, index) => (
+                <li
+                  key={expense.id}
+                  className="animate-slide-up"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <div className="flex items-center gap-2 p-3 bg-cream/80 rounded-xl border border-espresso/5">
+                    <input
+                      type="text"
+                      value={expense.description}
+                      onChange={(e) =>
+                        updateExpenseDescription(expense.id, e.target.value)
+                      }
+                      placeholder="Description"
+                      className="input-glow flex-1 min-w-0 px-3 py-2 text-sm font-medium text-espresso bg-transparent border border-transparent rounded-lg focus:bg-white focus:border-espresso/10 outline-none transition-all placeholder:text-espresso/30"
+                    />
+                    <div className="relative flex-shrink-0 w-24">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-espresso/40">
+                        $
+                      </span>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        value={expense.price}
+                        onChange={(e) =>
+                          updateExpensePrice(expense.id, e.target.value)
+                        }
+                        placeholder="0.00"
+                        className="input-glow w-full pl-6 pr-2 py-2 text-sm font-semibold text-right text-espresso bg-white rounded-lg border border-espresso/10 focus:border-terracotta/30 outline-none transition-all placeholder:text-espresso/20"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeExpense(expense.id)}
+                      className="flex-shrink-0 w-8 h-8 flex items-center justify-center text-espresso/30 hover:text-terracotta hover:bg-terracotta/10 active:bg-terracotta/20 rounded-lg transition-colors"
+                      aria-label="Remove expense"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* Total + Add Button */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-espresso-light/60">
+              Total
             </span>
-            <input
-              type="number"
-              inputMode="decimal"
-              value={totalAmount}
-              onChange={(e) => setTotalAmount(e.target.value)}
-              placeholder="0.00"
-              className="input-glow w-full pl-10 pr-4 py-3 text-3xl font-display font-bold text-espresso bg-cream-dark/50 rounded-xl border-2 border-transparent focus:border-terracotta/30 focus:bg-white outline-none transition-all"
-            />
+            <div className="flex items-center gap-2">
+              {hasItems ? (
+                <span className="text-3xl font-display font-bold text-espresso">
+                  ${formatPrice(total)}
+                </span>
+              ) : (
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-2xl font-display font-semibold text-espresso/40">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={manualTotal}
+                    onChange={(e) => setManualTotal(e.target.value)}
+                    placeholder="0.00"
+                    className="input-glow w-36 pl-8 pr-3 py-2 text-3xl font-display font-bold text-right text-espresso bg-cream-dark/50 rounded-xl border-2 border-transparent focus:border-terracotta/30 focus:bg-white outline-none transition-all placeholder:text-espresso/20"
+                  />
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={addExpense}
+                className="w-8 h-8 rounded-full bg-terracotta/10 text-terracotta hover:bg-terracotta/20 active:bg-terracotta/30 flex items-center justify-center transition-colors"
+                aria-label="Add expense"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -168,7 +302,7 @@ export function ExpenseForm() {
           <div className="flex items-center justify-between text-sm mb-2">
             <span className="text-espresso-light/60">Covered</span>
             <span className="font-semibold text-sage">
-              ${coveredAmount.toFixed(2)}
+              ${formatPrice(coveredAmount)}
             </span>
           </div>
 
@@ -184,7 +318,7 @@ export function ExpenseForm() {
                     : "text-amber pulse-attention"
               }`}
             >
-              {isOver ? "+" : ""}${Math.abs(remaining).toFixed(2)}
+              {isOver ? "+" : ""}${formatPrice(Math.abs(remaining))}
             </span>
           </div>
 
@@ -202,14 +336,14 @@ export function ExpenseForm() {
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M12 3l9.5 16.5H2.5L12 3z" />
                 </svg>
-                Over by ${Math.abs(remaining).toFixed(2)}
+                Over by ${formatPrice(Math.abs(remaining))}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber bg-amber/10 rounded-full">
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01" />
                 </svg>
-                ${remaining.toFixed(2)} left to cover
+                ${formatPrice(remaining)} left to cover
               </span>
             )}
           </div>
