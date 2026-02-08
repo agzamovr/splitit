@@ -4,6 +4,7 @@ interface Expense {
   id: string;
   description: string;
   price: string;
+  splitEqually: boolean;
 }
 
 interface Person {
@@ -72,7 +73,7 @@ export function ExpenseForm() {
     const price = expenses.length === 0 ? manualTotal : "";
     setExpenses((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), description: "", price },
+      { id: crypto.randomUUID(), description: "", price, splitEqually: true },
     ]);
   };
 
@@ -89,6 +90,14 @@ export function ExpenseForm() {
   const updateExpensePrice = (id: string, price: string) => {
     setExpenses((prev) =>
       prev.map((e) => (e.id === id ? { ...e, price } : e))
+    );
+  };
+
+  const toggleExpenseSplitType = (id: string) => {
+    setExpenses((prev) =>
+      prev.map((e) =>
+        e.id === id ? { ...e, splitEqually: !e.splitEqually } : e
+      )
     );
   };
 
@@ -121,6 +130,38 @@ export function ExpenseForm() {
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <div className="flex items-center gap-2 p-3 bg-cream/80 rounded-xl border border-espresso/5">
+                    <button
+                      type="button"
+                      onClick={() => toggleExpenseSplitType(expense.id)}
+                      className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-base font-bold transition-colors ${
+                        expense.splitEqually
+                          ? "text-sage bg-sage/10 hover:bg-sage/20"
+                          : "text-espresso/40 bg-espresso/5 hover:bg-espresso/10"
+                      }`}
+                      aria-label={
+                        expense.splitEqually
+                          ? "Split equally — click to change"
+                          : "Not split equally — click to change"
+                      }
+                      title={
+                        expense.splitEqually
+                          ? "Split equally"
+                          : "Not split equally"
+                      }
+                    >
+                      {expense.splitEqually ? (
+                        <span className="relative">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                          </svg>
+                          <span className="absolute -bottom-1.5 -right-1.5 text-[9px] font-bold leading-none">{people.length}</span>
+                        </span>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                        </svg>
+                      )}
+                    </button>
                     <input
                       type="text"
                       value={expense.description}
