@@ -13,6 +13,9 @@ dist-ssr
 *.local
 src/routeTree.gen.ts
 
+/playwright-report/
+/test-results/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
