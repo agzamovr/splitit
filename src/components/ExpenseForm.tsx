@@ -30,16 +30,25 @@ export function ExpenseForm() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [manualTotal, setManualTotal] = useState("");
   const [people, setPeople] = useState<Person[]>(SAMPLE_PEOPLE);
+  const [splitMode, setSplitMode] = useState<"equally" | "parts" | "amounts">("equally");
 
   const hasItems = expenses.length > 0;
   const total = hasItems
     ? expenses.reduce((sum, e) => sum + (parseFloat(e.price) || 0), 0)
     : parseFloat(manualTotal) || 0;
 
-  const coveredAmount = people.reduce((sum, person) => {
-    const amount = parseFloat(person.amount) || 0;
-    return sum + amount;
-  }, 0);
+  const equalShares = people.map((_, i) => {
+    if (people.length === 0 || total === 0) return 0;
+    const base = Math.floor((total * 100) / people.length) / 100;
+    if (i === people.length - 1)
+      return +(total - base * (people.length - 1)).toFixed(2);
+    return base;
+  });
+
+  const coveredAmount =
+    splitMode === "equally"
+      ? equalShares.reduce((sum, s) => sum + s, 0)
+      : people.reduce((sum, person) => sum + (parseFloat(person.amount) || 0), 0);
   const remaining = total - coveredAmount;
   const isBalanced = Math.abs(remaining) < 0.01;
   const isOver = remaining < -0.01;
@@ -265,15 +274,35 @@ export function ExpenseForm() {
         <div className="px-5 py-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-medium text-espresso-light/60 uppercase tracking-wider">
-              Split between
+              Split
             </span>
-            <span className="text-xs text-espresso-light/40">
-              {people.length} {people.length === 1 ? "person" : "people"}
-            </span>
+            <div className="flex gap-1 bg-cream-dark/50 rounded-lg p-0.5 border border-espresso/10">
+              {(["equally", "parts", "amounts"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setSplitMode(mode)}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                    splitMode === mode
+                      ? "bg-white text-espresso shadow-sm"
+                      : "text-espresso/40 hover:text-espresso/60"
+                  }`}
+                >
+                  {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
 
           <ul className="space-y-2">
-            {people.map((person, index) => (
+            {people.map((person, index) => {
+              const isEqual = splitMode === "equally";
+              const displayedAmount = isEqual
+                ? equalShares[index] > 0
+                  ? equalShares[index].toFixed(2)
+                  : ""
+                : person.amount;
+              return (
               <li
                 key={person.id}
                 className="animate-slide-up"
@@ -302,10 +331,15 @@ export function ExpenseForm() {
                     <input
                       type="number"
                       inputMode="decimal"
-                      value={person.amount}
+                      value={displayedAmount}
                       onChange={(e) => updatePersonAmount(person.id, e.target.value)}
+                      readOnly={isEqual}
                       placeholder="0.00"
-                      className="input-glow w-full pl-6 pr-2 py-2 text-sm font-semibold text-right text-espresso bg-white rounded-lg border border-espresso/10 focus:border-terracotta/30 outline-none transition-all placeholder:text-espresso/20"
+                      className={`w-full pl-6 pr-2 py-2 text-sm font-semibold text-right text-espresso rounded-lg border outline-none transition-all placeholder:text-espresso/20 ${
+                        isEqual
+                          ? "bg-cream-dark/40 border-espresso/5 text-espresso/60"
+                          : "input-glow bg-white border-espresso/10 focus:border-terracotta/30"
+                      }`}
                     />
                   </div>
 
@@ -322,7 +356,7 @@ export function ExpenseForm() {
                   </button>
                 </div>
               </li>
-            ))}
+            );})}
           </ul>
 
           {/* Add Person Button */}
@@ -393,7 +427,7 @@ export function ExpenseForm() {
 
       {/* Submit Button */}
       <button
-        disabled={!isBalanced || people.length === 0}
+        disabled={!isBalanced || people.length === 0 || total === 0}
         className="mt-6 w-full py-4 text-base font-semibold text-white bg-gradient-to-r from-terracotta to-terracotta-light rounded-2xl shadow-lg shadow-terracotta/25 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed hover:shadow-xl hover:shadow-terracotta/30 active:scale-[0.98] transition-all"
       >
         Save Split
