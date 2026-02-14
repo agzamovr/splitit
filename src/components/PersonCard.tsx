@@ -95,6 +95,7 @@ export function PersonCard({
             ref={(el) => {
               if (el && focusNewId.current === person.id) {
                 el.focus();
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
                 focusNewId.current = null;
               }
             }}

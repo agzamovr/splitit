@@ -105,6 +105,7 @@ export function ExpenseRow({
             ref={(el) => {
               if (el && focusNewId.current === expense.id) {
                 el.focus();
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
                 focusNewId.current = null;
               }
             }}
@@ -115,7 +116,7 @@ export function ExpenseRow({
             placeholder="Description"
             className="input-glow flex-1 min-w-0 px-3 py-1.5 text-base sm:text-sm font-medium text-espresso bg-transparent border border-transparent rounded-lg focus:bg-white focus:border-espresso/10 outline-none transition-all placeholder:text-espresso/30"
           />
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 relative">
             <div className="relative w-24">
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-espresso/40">
                 $
@@ -131,7 +132,7 @@ export function ExpenseRow({
               />
             </div>
             {pricingMode === "each" && assignedCount > 0 && (
-              <div className="text-[10px] text-espresso/50 text-right pr-1 mt-0.5">
+              <div className="absolute top-full right-0 text-[10px] text-espresso/50 text-right pr-1 mt-0.5">
                 = ${formatPrice((parseFloat(expense.price) || 0) * assignedCount)}
               </div>
             )}
