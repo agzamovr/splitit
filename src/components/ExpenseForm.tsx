@@ -358,7 +358,7 @@ export function ExpenseForm() {
                             updateExpenseDescription(expense.id, e.target.value)
                           }
                           placeholder="Description"
-                          className="input-glow flex-1 min-w-0 px-3 py-2 text-sm font-medium text-espresso bg-transparent border border-transparent rounded-lg focus:bg-white focus:border-espresso/10 outline-none transition-all placeholder:text-espresso/30"
+                          className="input-glow flex-1 min-w-0 px-3 py-2 text-base sm:text-sm font-medium text-espresso bg-transparent border border-transparent rounded-lg focus:bg-white focus:border-espresso/10 outline-none transition-all placeholder:text-espresso/30"
                         />
                         <div className="relative flex-shrink-0 w-24">
                           <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-espresso/40">
@@ -372,7 +372,7 @@ export function ExpenseForm() {
                               updateExpensePrice(expense.id, e.target.value)
                             }
                             placeholder="0.00"
-                            className="input-glow w-full pl-6 pr-2 py-2 text-sm font-semibold text-right text-espresso bg-white rounded-lg border border-espresso/10 focus:border-terracotta/30 outline-none transition-all placeholder:text-espresso/20"
+                            className="input-glow w-full pl-6 pr-2 py-2 text-base sm:text-sm font-semibold text-right text-espresso bg-white rounded-lg border border-espresso/10 focus:border-terracotta/30 outline-none transition-all placeholder:text-espresso/20"
                           />
                         </div>
                         <button
@@ -589,7 +589,7 @@ export function ExpenseForm() {
                         value={person.name}
                         onChange={(e) => updatePersonName(person.id, e.target.value)}
                         placeholder="Name"
-                        className="input-glow flex-1 min-w-0 px-3 py-2 text-sm font-medium text-espresso bg-transparent border border-transparent rounded-lg focus:bg-white focus:border-espresso/10 outline-none transition-all placeholder:text-espresso/30"
+                        className="input-glow flex-1 min-w-0 px-3 py-2 text-base sm:text-sm font-medium text-espresso bg-transparent border border-transparent rounded-lg focus:bg-white focus:border-espresso/10 outline-none transition-all placeholder:text-espresso/30"
                       />
 
                       {/* Amount Input */}
@@ -602,7 +602,7 @@ export function ExpenseForm() {
                             type="text"
                             value={formatPrice(computedAmounts[person.id] || 0)}
                             readOnly
-                            className="w-full pl-6 pr-2 py-2 text-sm font-semibold text-right text-espresso rounded-lg border outline-none transition-all bg-sage/10 border-sage/20 text-espresso/60"
+                            className="w-full pl-6 pr-2 py-2 text-base sm:text-sm font-semibold text-right text-espresso rounded-lg border outline-none transition-all bg-sage/10 border-sage/20 text-espresso/60"
                           />
                         ) : (
                           <input
@@ -612,7 +612,7 @@ export function ExpenseForm() {
                             onChange={(e) => updatePersonAmount(person.id, e.target.value)}
                             readOnly={isEqual}
                             placeholder="0.00"
-                            className={`w-full pl-6 pr-2 py-2 text-sm font-semibold text-right text-espresso rounded-lg border outline-none transition-all placeholder:text-espresso/20 ${
+                            className={`w-full pl-6 pr-2 py-2 text-base sm:text-sm font-semibold text-right text-espresso rounded-lg border outline-none transition-all placeholder:text-espresso/20 ${
                               isEqual
                                 ? "bg-cream-dark/40 border-espresso/5 text-espresso/60"
                                 : "input-glow bg-white border-espresso/10 focus:border-terracotta/30"
