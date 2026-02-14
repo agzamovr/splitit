@@ -27,26 +27,6 @@ body {
   color: var(--color-espresso);
 }
 
-/* Receipt paper texture */
-.receipt-paper {
-  background: linear-gradient(180deg, #fff 0%, #FDFAF7 100%);
-  box-shadow:
-    0 1px 2px rgba(44, 24, 16, 0.04),
-    0 4px 8px rgba(44, 24, 16, 0.04),
-    0 12px 24px rgba(44, 24, 16, 0.06);
-}
-
-/* Torn paper edge effect */
-.receipt-edge {
-  --mask: radial-gradient(circle at 8px 50%, transparent 6px, #000 6.5px);
-  -webkit-mask-image: var(--mask);
-  mask-image: var(--mask);
-  -webkit-mask-size: 16px 100%;
-  mask-size: 16px 100%;
-  -webkit-mask-repeat: repeat-y;
-  mask-repeat: repeat-y;
-}
-
 /* Input focus glow */
 .input-glow:focus {
   box-shadow:
