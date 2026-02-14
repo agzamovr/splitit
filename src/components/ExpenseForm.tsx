@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 let nextId = 0;
 const genId = () => `id-${++nextId}`;
@@ -38,6 +38,7 @@ export function ExpenseForm() {
   const [manualTotal, setManualTotal] = useState("");
   const [people, setPeople] = useState<Person[]>(SAMPLE_PEOPLE);
   const [splitMode, setSplitMode] = useState<"equally" | "amounts">("equally");
+  const focusNewId = useRef<string | null>(null);
 
   // Assignment state
   const [assignments, setAssignments] = useState<Record<string, string[]>>({});
@@ -102,6 +103,7 @@ export function ExpenseForm() {
       name: "",
       amount: "",
     };
+    focusNewId.current = newPerson.id;
     setPeople((prev) => [...prev, newPerson]);
     // Add new person to every expense's assignment
     setAssignments((prev) => {
@@ -128,6 +130,7 @@ export function ExpenseForm() {
   const addExpense = () => {
     const price = expenses.length === 0 ? manualTotal : "";
     const id = genId();
+    focusNewId.current = id;
     setExpenses((prev) => [...prev, { id, description: "", price }]);
     // Initialize assignment to all current people
     setAssignments((prev) => ({
@@ -343,6 +346,12 @@ export function ExpenseForm() {
                           </span>
                         </button>
                         <input
+                          ref={(el) => {
+                            if (el && focusNewId.current === expense.id) {
+                              el.focus();
+                              focusNewId.current = null;
+                            }
+                          }}
                           type="text"
                           value={expense.description}
                           onChange={(e) =>
@@ -570,6 +579,12 @@ export function ExpenseForm() {
 
                       {/* Name Input */}
                       <input
+                        ref={(el) => {
+                          if (el && focusNewId.current === person.id) {
+                            el.focus();
+                            focusNewId.current = null;
+                          }
+                        }}
                         type="text"
                         value={person.name}
                         onChange={(e) => updatePersonName(person.id, e.target.value)}
