@@ -21,10 +21,10 @@ type AssignmentMode =
   | { type: "person"; personId: string };
 
 const SAMPLE_PEOPLE: Person[] = [
-  { id: "1", name: "Alex", amount: "24.50" },
-  { id: "2", name: "Jordan", amount: "18.00" },
-  { id: "3", name: "Sam", amount: "32.75" },
-  { id: "4", name: "Riley", amount: "" },
+  { id: "1", name: "Rus", amount: "" },
+  { id: "2", name: "Don", amount: "" },
+  { id: "3", name: "Art", amount: "" },
+  { id: "4", name: "Faz", amount: "" },
 ];
 
 const formatPrice = (value: number) =>
@@ -225,9 +225,40 @@ export function ExpenseForm() {
       <div className="receipt-paper rounded-2xl overflow-hidden">
         {/* Items Section */}
         <div className="px-5 pt-5 pb-4 border-b border-dashed border-espresso/10">
-          <span className="block text-xs font-medium text-espresso-light/60 uppercase tracking-wider mb-3">
-            Items
-          </span>
+          {inPersonMode ? (
+            <button
+              type="button"
+              onClick={() => {
+                const personId = assignmentMode.personId;
+                const allItemIds = expenses.map((e) => e.id);
+                const currentlyAssigned = allItemIds.filter((id) =>
+                  (assignments[id] || []).includes(personId)
+                );
+                const allSelected = currentlyAssigned.length === expenses.length;
+                setAssignments((prev) => {
+                  const next = { ...prev };
+                  for (const id of allItemIds) {
+                    const current = next[id] || [];
+                    if (allSelected) {
+                      next[id] = current.filter((pid) => pid !== personId);
+                    } else if (!current.includes(personId)) {
+                      next[id] = [...current, personId];
+                    }
+                  }
+                  return next;
+                });
+              }}
+              className="block text-xs font-medium text-sage hover:text-sage/80 uppercase tracking-wider mb-3 transition-colors"
+            >
+              {expenses.every((e) => (assignments[e.id] || []).includes(assignmentMode.personId))
+                ? "Deselect All"
+                : "Select All"}
+            </button>
+          ) : (
+            <span className="block text-xs font-medium text-espresso-light/60 uppercase tracking-wider mb-3">
+              Items
+            </span>
+          )}
 
           {expenses.length > 0 && (
             <ul className="space-y-2 mb-3">
@@ -251,24 +282,28 @@ export function ExpenseForm() {
                       <button
                         type="button"
                         onClick={() => toggleAssignment(expense.id, assignmentMode.personId)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                        className={`w-full flex items-center gap-2 p-3 rounded-xl border transition-colors ${
                           isAssignedInPersonMode
                             ? "bg-sage/10 border-sage/20"
                             : "bg-cream/80 border-espresso/5"
                         }`}
                       >
-                        <span className="flex-shrink-0 relative w-8 h-8 flex items-center justify-center text-sage">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-                          </svg>
-                          <span className="absolute -bottom-1.5 -right-1.5 text-[9px] font-bold leading-none text-sage">{assignedCount}</span>
+                        <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center text-sage">
+                          <span className="relative">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                            </svg>
+                            <span className="absolute -bottom-1.5 -right-1.5 text-[9px] font-bold leading-none">{assignedCount}</span>
+                          </span>
                         </span>
-                        <span className="flex-1 text-left text-sm font-medium text-espresso truncate">
+                        <span className="flex-1 min-w-0 px-3 py-2 border border-transparent text-left text-sm font-medium text-espresso truncate">
                           {expense.description || "Untitled"}
                         </span>
-                        <span className="flex-shrink-0 text-sm font-semibold text-espresso">
-                          ${formatPrice(parseFloat(expense.price) || 0)}
-                        </span>
+                        <div className="flex-shrink-0 w-24">
+                          <span className="block pl-6 pr-2 py-2 border border-transparent text-sm font-semibold text-right text-espresso">
+                            ${formatPrice(parseFloat(expense.price) || 0)}
+                          </span>
+                        </div>
                         {/* Check / empty */}
                         <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
                           isAssignedInPersonMode
@@ -413,9 +448,30 @@ export function ExpenseForm() {
         {/* People List */}
         <div className="px-5 py-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-espresso-light/60 uppercase tracking-wider">
-              Split
-            </span>
+            {inItemMode ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const itemId = assignmentMode.itemId;
+                  const allPersonIds = people.map((p) => p.id);
+                  const current = assignments[itemId] || [];
+                  const allSelected = current.length === people.length;
+                  setAssignments((prev) => ({
+                    ...prev,
+                    [itemId]: allSelected ? [] : allPersonIds,
+                  }));
+                }}
+                className="text-xs font-medium text-sage hover:text-sage/80 uppercase tracking-wider transition-colors"
+              >
+                {(assignments[assignmentMode.itemId] || []).length === people.length
+                  ? "Deselect All"
+                  : "Select All"}
+              </button>
+            ) : (
+              <span className="text-xs font-medium text-espresso-light/60 uppercase tracking-wider">
+                Split
+              </span>
+            )}
             <div className="flex gap-1 bg-cream-dark/50 rounded-lg p-0.5 border border-espresso/10">
               {(["equally", "amounts"] as const).map((mode) => (
                 <button
