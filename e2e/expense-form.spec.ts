@@ -228,21 +228,52 @@ test.describe("Expense items", () => {
     await expect(page.getByText("$20.00").first()).toBeVisible();
   });
 
-  test("toggling split type changes icon aria-label", async ({ page }) => {
+  test("expense badge shows assigned people count and enters assignment mode", async ({ page }) => {
     await page.getByRole("button", { name: "Add expense" }).click();
 
-    const splitBtn = page.getByRole("button", {
-      name: "Split equally — click to change",
+    const assignBtn = page.getByRole("button", {
+      name: "Assign people to this expense",
     });
-    await expect(splitBtn).toBeVisible();
+    await expect(assignBtn).toBeVisible();
 
-    await splitBtn.click();
+    // Badge should show count of all people (4 sample people)
+    await expect(assignBtn).toContainText("4");
 
-    await expect(
-      page.getByRole("button", {
-        name: "Not split equally — click to change",
-      })
-    ).toBeVisible();
+    // Click to enter item assignment mode
+    await assignBtn.click();
+
+    // Split mode tabs should still be visible (no Save/Cancel)
+    await expect(page.getByRole("button", { name: "Equally" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Amounts" })).toBeVisible();
+  });
+
+  test("tapping same expense badge again exits assignment mode", async ({ page }) => {
+    await page.getByRole("button", { name: "Add expense" }).click();
+    const expensePrices = page.locator('li input[type="number"][placeholder="0.00"]');
+    await expensePrices.nth(0).fill("40");
+
+    const assignBtn = page.getByRole("button", {
+      name: "Assign people to this expense",
+    });
+
+    // Enter assignment mode
+    await assignBtn.click();
+
+    // Tap again to exit (toggle-off)
+    await assignBtn.click();
+
+    // Should switch to amounts mode with computed values
+    const amountsBtn = page.getByRole("button", { name: "Amounts" });
+    await expect(amountsBtn).toHaveClass(/bg-white/);
+
+    // Each of 4 people should have 10.00 (40/4)
+    const personRows = page.locator("li", {
+      has: page.getByPlaceholder("Name"),
+    });
+    await expect(personRows.nth(0).locator('input[type="number"]')).toHaveValue("10.00");
+    await expect(personRows.nth(1).locator('input[type="number"]')).toHaveValue("10.00");
+    await expect(personRows.nth(2).locator('input[type="number"]')).toHaveValue("10.00");
+    await expect(personRows.nth(3).locator('input[type="number"]')).toHaveValue("10.00");
   });
 
   test("removing all expenses restores manual total input", async ({
@@ -296,18 +327,13 @@ test.describe("People management", () => {
     await expect(equallyBtn).toHaveClass(/bg-white/);
   });
 
-  test("can change split mode to Parts and Amounts", async ({ page }) => {
-    const partsBtn = page.getByRole("button", { name: "Parts" });
+  test("can switch between Equally and Amounts split modes", async ({ page }) => {
     const amountsBtn = page.getByRole("button", { name: "Amounts" });
     const equallyBtn = page.getByRole("button", { name: "Equally" });
 
-    await partsBtn.click();
-    await expect(partsBtn).toHaveClass(/bg-white/);
-    await expect(equallyBtn).not.toHaveClass(/bg-white/);
-
     await amountsBtn.click();
     await expect(amountsBtn).toHaveClass(/bg-white/);
-    await expect(partsBtn).not.toHaveClass(/bg-white/);
+    await expect(equallyBtn).not.toHaveClass(/bg-white/);
 
     await equallyBtn.click();
     await expect(equallyBtn).toHaveClass(/bg-white/);
