@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import {
   type Expense,
   type Person,
+  type PricingMode,
   type AssignmentMode,
   SAMPLE_PEOPLE,
   genId,
@@ -14,12 +15,19 @@ export function useExpenseStore() {
   const [splitMode, setSplitMode] = useState<"equally" | "amounts">("equally");
   const focusNewId = useRef<string | null>(null);
 
+  const [pricingMode, setPricingMode] = useState<PricingMode>("total");
   const [assignments, setAssignments] = useState<Record<string, string[]>>({});
   const [assignmentMode, setAssignmentMode] = useState<AssignmentMode>(null);
 
   const hasItems = expenses.length > 0;
   const total = hasItems
-    ? expenses.reduce((sum, e) => sum + (parseFloat(e.price) || 0), 0)
+    ? expenses.reduce((sum, e) => {
+        const price = parseFloat(e.price) || 0;
+        if (pricingMode === "each") {
+          return sum + price * (assignments[e.id] || []).length;
+        }
+        return sum + price;
+      }, 0)
     : parseFloat(manualTotal) || 0;
 
   // Computed amounts per person based on assignments
@@ -33,12 +41,20 @@ export function useExpenseStore() {
       const price = parseFloat(expense.price) || 0;
       const assigned = assignments[expense.id] || [];
       if (assigned.length === 0 || price === 0) continue;
-      const base = Math.floor((price * 100) / assigned.length) / 100;
-      const remainder = +(price - base * assigned.length).toFixed(2);
-      for (let i = 0; i < assigned.length; i++) {
-        const pid = assigned[i];
-        if (computedAmounts[pid] !== undefined) {
-          computedAmounts[pid] += i === assigned.length - 1 ? base + remainder : base;
+      if (pricingMode === "each") {
+        for (const pid of assigned) {
+          if (computedAmounts[pid] !== undefined) {
+            computedAmounts[pid] += price;
+          }
+        }
+      } else {
+        const base = Math.floor((price * 100) / assigned.length) / 100;
+        const remainder = +(price - base * assigned.length).toFixed(2);
+        for (let i = 0; i < assigned.length; i++) {
+          const pid = assigned[i];
+          if (computedAmounts[pid] !== undefined) {
+            computedAmounts[pid] += i === assigned.length - 1 ? base + remainder : base;
+          }
         }
       }
     }
@@ -208,6 +224,7 @@ export function useExpenseStore() {
     manualTotal,
     people,
     splitMode,
+    pricingMode,
     assignments,
     assignmentMode,
     focusNewId,
@@ -229,6 +246,7 @@ export function useExpenseStore() {
     removeExpense,
     updateExpenseDescription,
     updateExpensePrice,
+    setPricingMode,
     addPerson,
     removePerson,
     updatePersonName,

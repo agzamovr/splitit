@@ -1,3 +1,5 @@
+export type PricingMode = "total" | "each";
+
 export interface Expense {
   id: string;
   description: string;

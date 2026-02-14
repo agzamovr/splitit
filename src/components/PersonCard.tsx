@@ -11,6 +11,7 @@ interface PersonCardProps {
   isDimmedPerson: boolean;
   isItemModeRow: boolean;
   isAssignedInItemMode: boolean;
+  isLastInput?: boolean;
   focusNewId: MutableRefObject<string | null>;
   onToggleAssignment: () => void;
   onPersonFocus: () => void;
@@ -29,6 +30,7 @@ export function PersonCard({
   isDimmedPerson,
   isItemModeRow,
   isAssignedInItemMode,
+  isLastInput,
   focusNewId,
   onToggleAssignment,
   onPersonFocus,
@@ -97,6 +99,7 @@ export function PersonCard({
               }
             }}
             type="text"
+            enterKeyHint={isEqual && isLastInput ? "done" : "next"}
             value={person.name}
             onChange={(e) => onUpdateName(e.target.value)}
             placeholder="Name"
@@ -118,6 +121,7 @@ export function PersonCard({
               <input
                 type="number"
                 inputMode="decimal"
+                enterKeyHint={isLastInput ? "done" : "next"}
                 value={displayedAmount}
                 onChange={(e) => onUpdateAmount(e.target.value)}
                 readOnly={isEqual}

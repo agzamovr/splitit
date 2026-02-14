@@ -1,14 +1,16 @@
 import { type MutableRefObject } from "react";
-import { type Expense, formatPrice } from "../types";
+import { type Expense, type PricingMode, formatPrice } from "../types";
 
 interface ExpenseRowProps {
   expense: Expense;
   index: number;
   assignedCount: number;
+  pricingMode: PricingMode;
   isActiveItem: boolean;
   isDimmedItem: boolean;
   isPersonModeRow: boolean;
   isAssignedInPersonMode: boolean;
+  isLastInput?: boolean;
   focusNewId: MutableRefObject<string | null>;
   onToggleAssignment: () => void;
   onItemFocus: () => void;
@@ -21,10 +23,12 @@ export function ExpenseRow({
   expense,
   index,
   assignedCount,
+  pricingMode,
   isActiveItem,
   isDimmedItem,
   isPersonModeRow,
   isAssignedInPersonMode,
+  isLastInput,
   focusNewId,
   onToggleAssignment,
   onItemFocus,
@@ -105,23 +109,32 @@ export function ExpenseRow({
               }
             }}
             type="text"
+            enterKeyHint="next"
             value={expense.description}
             onChange={(e) => onUpdateDescription(e.target.value)}
             placeholder="Description"
             className="input-glow flex-1 min-w-0 px-3 py-1.5 text-base sm:text-sm font-medium text-espresso bg-transparent border border-transparent rounded-lg focus:bg-white focus:border-espresso/10 outline-none transition-all placeholder:text-espresso/30"
           />
-          <div className="relative flex-shrink-0 w-24">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-espresso/40">
-              $
-            </span>
-            <input
-              type="number"
-              inputMode="decimal"
-              value={expense.price}
-              onChange={(e) => onUpdatePrice(e.target.value)}
-              placeholder="0.00"
-              className="input-glow w-full pl-6 pr-2 py-1.5 text-base sm:text-sm font-semibold text-right text-espresso bg-white rounded-lg border border-espresso/10 focus:border-terracotta/30 outline-none transition-all placeholder:text-espresso/20"
-            />
+          <div className="flex-shrink-0">
+            <div className="relative w-24">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-espresso/40">
+                $
+              </span>
+              <input
+                type="number"
+                inputMode="decimal"
+                enterKeyHint={isLastInput ? "done" : "next"}
+                value={expense.price}
+                onChange={(e) => onUpdatePrice(e.target.value)}
+                placeholder="0.00"
+                className="input-glow w-full pl-6 pr-2 py-1.5 text-base sm:text-sm font-semibold text-right text-espresso bg-white rounded-lg border border-espresso/10 focus:border-terracotta/30 outline-none transition-all placeholder:text-espresso/20"
+              />
+            </div>
+            {pricingMode === "each" && assignedCount > 0 && (
+              <div className="text-[10px] text-espresso/50 text-right pr-1 mt-0.5">
+                = ${formatPrice((parseFloat(expense.price) || 0) * assignedCount)}
+              </div>
+            )}
           </div>
           <button
             type="button"

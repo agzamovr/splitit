@@ -1,4 +1,5 @@
-import { formatPrice } from "../types";
+import { useCallback, useRef } from "react";
+import { type PricingMode, formatPrice } from "../types";
 import { useExpenseStore } from "../useExpenseStore";
 import { ExpenseRow } from "./ExpenseRow";
 import { PersonCard } from "./PersonCard";
@@ -6,10 +7,32 @@ import { SummarySection } from "./SummarySection";
 
 export function ExpenseForm() {
   const store = useExpenseStore();
+  const formRef = useRef<HTMLDivElement>(null);
+
+  const handleEnterNav = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Enter" || !(e.target instanceof HTMLInputElement)) return;
+    const inputs = formRef.current?.querySelectorAll<HTMLInputElement>("input:not([readonly])");
+    if (!inputs) return;
+    const list = Array.from(inputs);
+    const idx = list.indexOf(e.target);
+    e.preventDefault();
+    if (idx >= 0 && idx < list.length - 1) {
+      list[idx + 1].focus();
+    } else {
+      e.target.blur();
+    }
+  }, []);
+
+  // Determine which component holds the last editable input
+  const hasEditablePersonInputs = store.people.length > 0;
+  const lastPersonIsLast = hasEditablePersonInputs;
+  const lastExpenseIsLast = !hasEditablePersonInputs && store.expenses.length > 0;
 
   return (
     <div
+      ref={formRef}
       className="min-h-screen bg-cream pt-3 pb-8"
+      onKeyDown={handleEnterNav}
       onClick={(e) => {
         if (store.inAssignmentMode && e.target === e.currentTarget) {
           store.exitAssignmentMode();
@@ -25,21 +48,39 @@ export function ExpenseForm() {
 
       {/* Items Section */}
       <div className="border-b border-espresso/8">
-        {store.inPersonMode ? (
-          <button
-            type="button"
-            onClick={store.selectAllItems}
-            className="block px-4 pt-3 pb-1 text-xs font-medium text-sage hover:text-sage/80 uppercase tracking-wider transition-colors"
-          >
-            {store.expenses.every((e) => (store.assignments[e.id] || []).includes(store.assignmentMode!.type === "person" ? store.assignmentMode!.personId : ""))
-              ? "Deselect All"
-              : "Select All"}
-          </button>
-        ) : (
-          <span className="block px-4 pt-3 pb-1 text-xs font-medium text-espresso/50 uppercase tracking-wider">
-            Items
-          </span>
-        )}
+        <div className="flex items-center justify-between px-4 pt-3 pb-1">
+          {store.inPersonMode ? (
+            <button
+              type="button"
+              onClick={store.selectAllItems}
+              className="text-xs font-medium text-sage hover:text-sage/80 uppercase tracking-wider transition-colors"
+            >
+              {store.expenses.every((e) => (store.assignments[e.id] || []).includes(store.assignmentMode!.type === "person" ? store.assignmentMode!.personId : ""))
+                ? "Deselect All"
+                : "Select All"}
+            </button>
+          ) : (
+            <span className="text-xs font-medium text-espresso/50 uppercase tracking-wider">
+              Items
+            </span>
+          )}
+          <div className="flex gap-0.5 bg-cream-dark/50 rounded-lg p-0.5">
+            {(["total", "each"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => store.setPricingMode(mode)}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                  store.pricingMode === mode
+                    ? "bg-white text-espresso shadow-sm"
+                    : "text-espresso/40 hover:text-espresso/60"
+                }`}
+              >
+                {mode === "total" ? "Total" : "Each"}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {store.expenses.length > 0 && (
           <ul className="divide-y divide-espresso/8">
@@ -58,10 +99,12 @@ export function ExpenseForm() {
                   expense={expense}
                   index={index}
                   assignedCount={assignedCount}
+                  pricingMode={store.pricingMode}
                   isActiveItem={isActiveItem}
                   isDimmedItem={isDimmedItem}
                   isPersonModeRow={store.inPersonMode}
                   isAssignedInPersonMode={isAssignedInPersonMode}
+                  isLastInput={lastExpenseIsLast && index === store.expenses.length - 1}
                   focusNewId={store.focusNewId}
                   onToggleAssignment={() =>
                     store.assignmentMode?.type === "person" &&
@@ -95,6 +138,7 @@ export function ExpenseForm() {
                 <input
                   type="number"
                   inputMode="decimal"
+                  enterKeyHint={hasEditablePersonInputs ? "next" : "done"}
                   value={store.manualTotal}
                   onChange={(e) => store.setManualTotal(e.target.value)}
                   placeholder="0.00"
@@ -191,6 +235,7 @@ export function ExpenseForm() {
                 isDimmedPerson={isDimmedPerson}
                 isItemModeRow={store.inItemMode}
                 isAssignedInItemMode={isAssignedInItemMode}
+                isLastInput={lastPersonIsLast && index === store.people.length - 1}
                 focusNewId={store.focusNewId}
                 onToggleAssignment={() =>
                   store.assignmentMode?.type === "item" &&
