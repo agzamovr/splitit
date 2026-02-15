@@ -83,6 +83,8 @@ export function ExpenseRow({
         </button>
       ) : (
         <div className={`flex items-center gap-2 pl-4 pr-3 py-2.5 transition-all ${
+          pricingMode === "each" && assignedCount > 0 ? "pb-5" : ""
+        } ${
           isActiveItem
             ? "bg-sage/5 border-l-2 border-l-sage pl-[14px]"
             : ""
