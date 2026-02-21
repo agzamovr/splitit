@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from "react";
-import { detectCurrency, formatAmount, getCurrencySymbol, getCurrencySymbolClass } from "../currency";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { detectCurrency, formatAmount, getCurrencySymbol } from "../currency";
 import { useExpenseStore } from "../useExpenseStore";
 import { ExpenseRow } from "./ExpenseRow";
 import { PersonCard } from "./PersonCard";
@@ -11,6 +11,11 @@ export function ExpenseForm() {
   const formRef = useRef<HTMLDivElement>(null);
   const localCurrencyRef = useRef(detectCurrency());
   const [showCurrencySelector, setShowCurrencySelector] = useState(false);
+  const [settledDebtorIds, setSettledDebtorIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setSettledDebtorIds(new Set());
+  }, [store.payerId]);
 
   const handleEnterNav = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Enter" || !(e.target instanceof HTMLInputElement)) return;
@@ -26,10 +31,13 @@ export function ExpenseForm() {
     }
   }, []);
 
-  const isPaymentMode = store.viewMode === "payment";
-  const [focusedPaymentPersonId, setFocusedPaymentPersonId] = useState<string | null>(null);
-  const currencySym = getCurrencySymbol(store.currency);
-  const currencySymClass = getCurrencySymbolClass(currencySym);
+  const isPaymentMode = store.viewMode === "settle";
+
+  const payer = store.payerId ? store.people.find(p => p.id === store.payerId) ?? null : null;
+  const payerName = payer?.name || "";
+  const settleOrder = isPaymentMode && payer
+    ? [payer, ...store.people.filter(p => p.id !== store.payerId)]
+    : store.people;
 
   // Determine which component holds the last editable input
   const hasEditablePersonInputs = store.people.length > 0;
@@ -48,26 +56,10 @@ export function ExpenseForm() {
       }}
     >
       {/* Header */}
-      <header className="px-4 py-3 border-b border-espresso/8 flex items-center justify-between">
+      <header className="px-4 py-3 border-b border-espresso/8">
         <h1 className="text-base font-semibold text-espresso tracking-tight">
           Split the Bill
         </h1>
-        <div className="flex gap-0.5 bg-cream-dark/50 rounded-lg p-0.5">
-          {(["consumption", "payment"] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => store.setViewMode(mode)}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
-                store.viewMode === mode
-                  ? "bg-white text-espresso shadow-sm"
-                  : "text-espresso/40 hover:text-espresso/60"
-              }`}
-            >
-              {mode === "consumption" ? "Consumption" : "Payment"}
-            </button>
-          ))}
-        </div>
       </header>
 
       {/* Items Section */}
@@ -216,146 +208,173 @@ export function ExpenseForm() {
           </div>
         </div>
 
-        {/* Remaining to Pay (payment mode only) */}
-        {isPaymentMode && store.total > 0 && (
-          <div className="flex items-center justify-between px-4 py-2 border-t border-espresso/8">
-            <span className="text-sm font-medium text-espresso-light/60">
-              Remaining
-            </span>
-            <span className={`text-base font-display font-semibold ${
-              store.remainingToPay < -0.01
-                ? "text-terracotta"
-                : store.remainingToPay < 0.01
-                  ? "text-sage"
-                  : "text-espresso"
-            }`}>
-              <span className={`opacity-60 ${currencySymClass}`}>{currencySym}</span>&thinsp;{formatAmount(store.remainingToPay, store.currency)}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* People Section */}
       <div>
-        <div className="flex items-center justify-between px-4 py-2 border-t border-espresso/8">
-          {!isPaymentMode && store.inItemMode ? (
-            <button
-              type="button"
-              onClick={store.selectAllPeople}
-              className="text-xs font-medium text-sage hover:text-sage/80 uppercase tracking-wider transition-colors"
-            >
-              {store.assignmentMode!.type === "item" && (store.assignments[store.assignmentMode!.itemId] || []).length === store.people.length
-                ? "Deselect All"
-                : "Select All"}
-            </button>
-          ) : (
-            <span className="text-xs font-medium text-espresso/50 uppercase tracking-wider">
-              {isPaymentMode ? "Payments" : "Split"}
-            </span>
-          )}
-          {isPaymentMode && focusedPaymentPersonId !== null && store.total > 0 && (
-            <button
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => store.updatePersonPaid(focusedPaymentPersonId, store.total.toFixed(2))}
-              className="px-2.5 py-1 text-[11px] font-semibold text-terracotta bg-terracotta/10 rounded-full hover:bg-terracotta/20 active:bg-terracotta/30 transition-colors"
-            >
-              Paid Full Bill
-            </button>
-          )}
-          {!isPaymentMode && (
-            <div className="flex gap-1 bg-cream-dark/50 rounded-lg p-0.5">
-              {(["equally", "amounts"] as const).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => store.setSplitMode(mode)}
-                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
-                    store.splitMode === mode
-                      ? "bg-white text-espresso shadow-sm"
-                      : "text-espresso/40 hover:text-espresso/60"
-                  }`}
-                >
-                  {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                </button>
-              ))}
+        {isPaymentMode ? (
+          // ── Settle mode: single stable <ul>, headers injected as <li> siblings ──
+          <>
+            <div className="border-t border-espresso/8 px-4 py-2">
+              <span className="text-xs font-medium text-espresso/40 uppercase tracking-wider">
+                {store.payerId ? "Paid by" : "Who paid?"}
+              </span>
             </div>
-          )}
-        </div>
+            <ul className="divide-y divide-espresso/8">
+              {settleOrder.map((person, index) => {
+                const isPayer = person.id === store.payerId;
+                const settleVariant: "select" | "payer" | "debt" =
+                  !store.payerId ? "select" : isPayer ? "payer" : "debt";
+                // Inject "Who owes" header as a <li> before the first debtor,
+                // keeping PersonCard keys stable so FLIP animation stays intact.
+                const owesHeader = store.payerId && !isPayer && index === 1
+                  ? <li key="h-owes" className="px-4 py-2"><span className="text-xs font-medium text-espresso/40 uppercase tracking-wider">Who owes</span></li>
+                  : null;
+                return [
+                  owesHeader,
+                  <PersonCard
+                    key={person.id}
+                    settleVariant={settleVariant}
+                    person={person}
+                    index={index}
+                    currency={store.currency}
+                    computedAmount={isPayer ? store.total : (store.computedAmounts[person.id] || 0)}
+                    onSelectPayer={() => store.setPayerId(person.id)}
+                    isSettled={settledDebtorIds.has(person.id)}
+                    onToggleSettled={() => setSettledDebtorIds(prev => {
+                      const next = new Set(prev);
+                      next.has(person.id) ? next.delete(person.id) : next.add(person.id);
+                      return next;
+                    })}
+                  />,
+                ];
+              })}
+            </ul>
+          </>
+        ) : (
+          // ── Consumption mode ──────────────────────────
+          <>
+            <div className="flex items-center justify-between px-4 py-2 border-t border-espresso/8">
+              {store.inItemMode ? (
+                <button
+                  type="button"
+                  onClick={store.selectAllPeople}
+                  className="text-xs font-medium text-sage hover:text-sage/80 uppercase tracking-wider transition-colors"
+                >
+                  {store.assignmentMode!.type === "item" && (store.assignments[store.assignmentMode!.itemId] || []).length === store.people.length
+                    ? "Deselect All"
+                    : "Select All"}
+                </button>
+              ) : (
+                <span className="text-xs font-medium text-espresso/50 uppercase tracking-wider">
+                  Split
+                </span>
+              )}
+              <div className="flex gap-1 bg-cream-dark/50 rounded-lg p-0.5">
+                {(["equally", "amounts"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => store.setSplitMode(mode)}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                      store.splitMode === mode
+                        ? "bg-white text-espresso shadow-sm"
+                        : "text-espresso/40 hover:text-espresso/60"
+                    }`}
+                  >
+                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        <ul className="divide-y divide-espresso/8">
-          {store.people.map((person, index) => {
-            const isEqual = store.splitMode === "equally";
-            const personAmount = store.computedAmounts[person.id] || 0;
-            const displayedAmount = isEqual
-              ? personAmount > 0
-                ? personAmount.toFixed(2)
-                : ""
-              : person.amount;
+            <ul className="divide-y divide-espresso/8">
+              {store.people.map((person, index) => {
+                const isEqual = store.splitMode === "equally";
+                const personAmount = store.computedAmounts[person.id] || 0;
+                const displayedAmount = isEqual
+                  ? personAmount > 0
+                    ? personAmount.toFixed(2)
+                    : ""
+                  : person.amount;
 
-            const isActivePerson = !isPaymentMode && store.inPersonMode && store.assignmentMode!.type === "person" && store.assignmentMode!.personId === person.id;
-            const isDimmedPerson = !isPaymentMode && store.inPersonMode && !isActivePerson;
-            const isAssignedInItemMode =
-              !isPaymentMode &&
-              store.inItemMode &&
-              store.assignmentMode!.type === "item" &&
-              (store.assignments[store.assignmentMode!.itemId] || []).includes(person.id);
+                const isActivePerson = store.inPersonMode && store.assignmentMode!.type === "person" && store.assignmentMode!.personId === person.id;
+                const isDimmedPerson = store.inPersonMode && !isActivePerson;
+                const isAssignedInItemMode =
+                  store.inItemMode &&
+                  store.assignmentMode!.type === "item" &&
+                  (store.assignments[store.assignmentMode!.itemId] || []).includes(person.id);
 
-            return (
-              <PersonCard
-                key={person.id}
-                person={person}
-                index={index}
-                currency={store.currency}
-                computedAmount={store.computedAmounts[person.id] || 0}
-                displayedAmount={displayedAmount}
-                isEqual={isEqual}
-                isActivePerson={isActivePerson}
-                isDimmedPerson={isDimmedPerson}
-                isItemModeRow={!isPaymentMode && store.inItemMode}
-                isAssignedInItemMode={isAssignedInItemMode}
-                isLastInput={lastPersonIsLast && index === store.people.length - 1}
-                focusNewId={store.focusNewId}
-                isPaymentMode={isPaymentMode}
-                paidAmount={person.paid}
-                onPaidFocus={() => setFocusedPaymentPersonId(person.id)}
-                onPaidBlur={() => setFocusedPaymentPersonId(null)}
-                onUpdatePaid={(paid) => store.updatePersonPaid(person.id, paid)}
-                onToggleAssignment={() =>
-                  store.assignmentMode?.type === "item" &&
-                  store.toggleAssignment(store.assignmentMode.itemId, person.id)
-                }
-                onPersonFocus={() => store.handlePersonFocus(person.id)}
-                onUpdateName={(name) => store.updatePersonName(person.id, name)}
-                onUpdateAmount={(amount) => store.updatePersonAmount(person.id, amount)}
-                onRemove={() => store.removePerson(person.id)}
-              />
-            );
-          })}
-        </ul>
+                return (
+                  <PersonCard
+                    key={person.id}
+                    person={person}
+                    index={index}
+                    currency={store.currency}
+                    computedAmount={store.computedAmounts[person.id] || 0}
+                    displayedAmount={displayedAmount}
+                    isEqual={isEqual}
+                    isActivePerson={isActivePerson}
+                    isDimmedPerson={isDimmedPerson}
+                    isItemModeRow={store.inItemMode}
+                    isAssignedInItemMode={isAssignedInItemMode}
+                    isLastInput={lastPersonIsLast && index === store.people.length - 1}
+                    focusNewId={store.focusNewId}
+                    onToggleAssignment={() =>
+                      store.assignmentMode?.type === "item" &&
+                      store.toggleAssignment(store.assignmentMode.itemId, person.id)
+                    }
+                    onPersonFocus={() => store.handlePersonFocus(person.id)}
+                    onUpdateName={(name) => store.updatePersonName(person.id, name)}
+                    onUpdateAmount={(amount) => store.updatePersonAmount(person.id, amount)}
+                    onRemove={() => store.removePerson(person.id)}
+                  />
+                );
+              })}
+            </ul>
 
-        {/* Add Person Button */}
-        <button
-          onClick={store.addPerson}
-          className={`w-full flex items-center gap-2 pl-4 pr-3 py-2.5 border-t border-espresso/8 text-sm font-medium text-terracotta hover:bg-cream-dark/40 transition-all ${!isPaymentMode && store.inAssignmentMode ? "invisible" : ""}`}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Add Person
-        </button>
+            {/* Add Person Button */}
+            <button
+              onClick={store.addPerson}
+              className={`w-full flex items-center gap-2 pl-4 pr-3 py-2.5 border-t border-espresso/8 text-sm font-medium text-terracotta hover:bg-cream-dark/40 transition-all ${store.inAssignmentMode ? "invisible" : ""}`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Add Person
+            </button>
+          </>
+        )}
       </div>
 
       {/* Summary */}
-      {!isPaymentMode && !store.inAssignmentMode && (
+      {!store.inAssignmentMode && (
         <SummarySection
           currency={store.currency}
-          coveredAmount={store.coveredAmount}
-          remaining={store.remaining}
-          isBalanced={store.isBalanced}
-          isOver={store.isOver}
+          coveredAmount={(() => {
+            if (!isPaymentMode) return store.coveredAmount;
+            const payerShare = store.payerId ? (store.computedAmounts[store.payerId] || 0) : 0;
+            return payerShare;
+          })()}
+          remaining={(() => {
+            if (!isPaymentMode) return store.remaining;
+            if (!store.payerId) return store.total;
+            return store.people
+              .filter(p => p.id !== store.payerId && !settledDebtorIds.has(p.id))
+              .reduce((sum, p) => sum + (store.computedAmounts[p.id] || 0), 0);
+          })()}
+          isBalanced={(() => {
+            if (!isPaymentMode) return store.isBalanced;
+            if (!store.payerId) return false;
+            return store.people
+              .filter(p => p.id !== store.payerId)
+              .every(p => settledDebtorIds.has(p.id));
+          })()}
+          isOver={isPaymentMode ? false : store.isOver}
           canSubmit={store.isBalanced && store.people.length > 0 && store.total > 0}
-          onPayment={() => store.setViewMode("payment")}
+          viewMode={store.viewMode}
+          setViewMode={store.setViewMode}
+          payerName={isPaymentMode ? payerName : undefined}
         />
       )}
 

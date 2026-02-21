@@ -1,4 +1,5 @@
 export type PricingMode = "total" | "each";
+export type ViewMode = "consumption" | "settle";
 
 export interface Expense {
   id: string;
@@ -10,6 +11,7 @@ export interface Person {
   id: string;
   name: string;
   amount: string;
+  paid: string;
 }
 
 export type AssignmentMode =
@@ -18,10 +20,10 @@ export type AssignmentMode =
   | { type: "person"; personId: string };
 
 export const SAMPLE_PEOPLE: Person[] = [
-  { id: "1", name: "Rus", amount: "" },
-  { id: "2", name: "Don", amount: "" },
-  { id: "3", name: "Art", amount: "" },
-  { id: "4", name: "Faz", amount: "" },
+  { id: "1", name: "Rus", amount: "", paid: "" },
+  { id: "2", name: "Don", amount: "", paid: "" },
+  { id: "3", name: "Art", amount: "", paid: "" },
+  { id: "4", name: "Faz", amount: "", paid: "" },
 ];
 
 let nextId = 0;

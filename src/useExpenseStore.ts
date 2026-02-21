@@ -3,6 +3,7 @@ import {
   type Expense,
   type Person,
   type PricingMode,
+  type ViewMode,
   type AssignmentMode,
   SAMPLE_PEOPLE,
   genId,
@@ -20,6 +21,15 @@ export function useExpenseStore() {
   const [pricingMode, setPricingMode] = useState<PricingMode>("total");
   const [assignments, setAssignments] = useState<Record<string, string[]>>({});
   const [assignmentMode, setAssignmentMode] = useState<AssignmentMode>(null);
+  const [viewMode, setViewModeState] = useState<ViewMode>("consumption");
+  const [payerId, setPayerIdState] = useState<string | null>(null);
+
+  const setViewMode = (mode: ViewMode) => {
+    if (mode !== "settle") setPayerIdState(null);
+    setViewModeState(mode);
+  };
+
+  const setPayerId = (id: string) => setPayerIdState(prev => prev === id ? null : id);
 
   const hasItems = expenses.length > 0;
   const total = hasItems
@@ -75,6 +85,9 @@ export function useExpenseStore() {
   const remaining = total - coveredAmount;
   const isBalanced = Math.abs(remaining) < 0.01;
   const isOver = remaining < -0.01;
+
+  const totalPaid = people.reduce((sum, p) => sum + (parseFloat(p.paid) || 0), 0);
+  const remainingToPay = total - totalPaid;
 
   const inItemMode = assignmentMode?.type === "item";
   const inPersonMode = assignmentMode?.type === "person";
@@ -154,7 +167,7 @@ export function useExpenseStore() {
   };
 
   const addPerson = () => {
-    const newPerson: Person = { id: genId(), name: "", amount: "" };
+    const newPerson: Person = { id: genId(), name: "", amount: "", paid: "" };
     focusNewId.current = newPerson.id;
     setPeople((prev) => [...prev, newPerson]);
     setAssignments((prev) => {
@@ -183,6 +196,10 @@ export function useExpenseStore() {
 
   const updatePersonAmount = (id: string, amount: string) => {
     setPeople((prev) => prev.map((p) => (p.id === id ? { ...p, amount } : p)));
+  };
+
+  const updatePersonPaid = (id: string, paid: string) => {
+    setPeople((prev) => prev.map((p) => (p.id === id ? { ...p, paid } : p)));
   };
 
   const selectAllItems = () => {
@@ -244,6 +261,8 @@ export function useExpenseStore() {
     pricingMode,
     assignments,
     assignmentMode,
+    viewMode,
+    payerId,
     focusNewId,
 
     // Derived
@@ -254,6 +273,8 @@ export function useExpenseStore() {
     remaining,
     isBalanced,
     isOver,
+    totalPaid,
+    remainingToPay,
     inItemMode,
     inPersonMode,
     inAssignmentMode,
@@ -274,6 +295,9 @@ export function useExpenseStore() {
     exitAssignmentMode,
     setManualTotal,
     setSplitMode: handleSetSplitMode,
+    setViewMode,
+    setPayerId,
+    updatePersonPaid,
     selectAllItems,
     selectAllPeople,
   };
