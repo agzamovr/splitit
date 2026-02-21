@@ -1,6 +1,7 @@
-import { formatPrice } from "../types";
+import { formatAmount, getCurrencySymbol, getCurrencySymbolClass } from "../currency";
 
 interface SummarySectionProps {
+  currency: string;
   coveredAmount: number;
   remaining: number;
   isBalanced: boolean;
@@ -9,19 +10,22 @@ interface SummarySectionProps {
 }
 
 export function SummarySection({
+  currency,
   coveredAmount,
   remaining,
   isBalanced,
   isOver,
   canSubmit,
 }: SummarySectionProps) {
+  const sym = getCurrencySymbol(currency);
+  const symTextClass = getCurrencySymbolClass(sym);
   return (
     <>
       <div className="border-t border-espresso/8">
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-espresso/8 text-sm">
-          <span className="text-espresso-light/60">Covered</span>
-          <span className="font-semibold text-sage">
-            ${formatPrice(coveredAmount)}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-espresso/8">
+          <span className="text-sm text-espresso-light/60">Covered</span>
+          <span className="text-sm font-semibold text-sage">
+            <span className={`opacity-60 ${symTextClass}`}>{sym}</span>&thinsp;{formatAmount(coveredAmount, currency)}
           </span>
         </div>
 
@@ -37,7 +41,7 @@ export function SummarySection({
                     : "text-amber pulse-attention"
               }`}
             >
-              {isOver ? "+" : ""}${formatPrice(Math.abs(remaining))}
+              {isOver ? "+" : ""}<span className={`opacity-60 ${symTextClass}`}>{sym}</span>&thinsp;{formatAmount(Math.abs(remaining), currency)}
             </span>
             {isBalanced ? (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-sage bg-sage/10 rounded-full">

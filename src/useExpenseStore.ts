@@ -7,6 +7,7 @@ import {
   SAMPLE_PEOPLE,
   genId,
 } from "./types";
+import { detectCurrency } from "./currency";
 
 export function useExpenseStore() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -15,6 +16,7 @@ export function useExpenseStore() {
   const [splitMode, setSplitMode] = useState<"equally" | "amounts">("equally");
   const focusNewId = useRef<string | null>(null);
 
+  const [currency, setCurrency] = useState<string>(() => detectCurrency());
   const [pricingMode, setPricingMode] = useState<PricingMode>("total");
   const [assignments, setAssignments] = useState<Record<string, string[]>>({});
   const [assignmentMode, setAssignmentMode] = useState<AssignmentMode>(null);
@@ -81,7 +83,6 @@ export function useExpenseStore() {
   // --- Actions ---
 
   const exitAssignmentMode = () => {
-    setSplitMode("amounts");
     setPeople((prev) =>
       prev.map((p) => ({
         ...p,
@@ -218,12 +219,28 @@ export function useExpenseStore() {
     }));
   };
 
+  const handleSetSplitMode = (mode: "equally" | "amounts") => {
+    if (mode === "amounts" && splitMode === "equally") {
+      setPeople((prev) =>
+        prev.map((p) => ({
+          ...p,
+          amount: computedAmounts[p.id] > 0
+            ? computedAmounts[p.id].toFixed(2)
+            : "",
+        }))
+      );
+    }
+    setSplitMode(mode);
+  };
+
   return {
     // State
     expenses,
     manualTotal,
     people,
     splitMode,
+    currency,
+    setCurrency,
     pricingMode,
     assignments,
     assignmentMode,
@@ -256,7 +273,7 @@ export function useExpenseStore() {
     toggleAssignment,
     exitAssignmentMode,
     setManualTotal,
-    setSplitMode,
+    setSplitMode: handleSetSplitMode,
     selectAllItems,
     selectAllPeople,
   };

@@ -1,13 +1,16 @@
-import { useCallback, useRef } from "react";
-import { type PricingMode, formatPrice } from "../types";
+import { useCallback, useRef, useState } from "react";
+import { detectCurrency, formatAmount, getCurrencySymbol, getCurrencySymbolClass } from "../currency";
 import { useExpenseStore } from "../useExpenseStore";
 import { ExpenseRow } from "./ExpenseRow";
 import { PersonCard } from "./PersonCard";
 import { SummarySection } from "./SummarySection";
+import { CurrencySelector } from "./CurrencySelector";
 
 export function ExpenseForm() {
   const store = useExpenseStore();
   const formRef = useRef<HTMLDivElement>(null);
+  const localCurrencyRef = useRef(detectCurrency());
+  const [showCurrencySelector, setShowCurrencySelector] = useState(false);
 
   const handleEnterNav = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Enter" || !(e.target instanceof HTMLInputElement)) return;
@@ -22,6 +25,11 @@ export function ExpenseForm() {
       e.target.blur();
     }
   }, []);
+
+  const isPaymentMode = store.viewMode === "payment";
+  const [focusedPaymentPersonId, setFocusedPaymentPersonId] = useState<string | null>(null);
+  const currencySym = getCurrencySymbol(store.currency);
+  const currencySymClass = getCurrencySymbolClass(currencySym);
 
   // Determine which component holds the last editable input
   const hasEditablePersonInputs = store.people.length > 0;
@@ -40,49 +48,67 @@ export function ExpenseForm() {
       }}
     >
       {/* Header */}
-      <header className="px-4 py-3 border-b border-espresso/8">
+      <header className="px-4 py-3 border-b border-espresso/8 flex items-center justify-between">
         <h1 className="text-base font-semibold text-espresso tracking-tight">
           Split the Bill
         </h1>
+        <div className="flex gap-0.5 bg-cream-dark/50 rounded-lg p-0.5">
+          {(["consumption", "payment"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => store.setViewMode(mode)}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                store.viewMode === mode
+                  ? "bg-white text-espresso shadow-sm"
+                  : "text-espresso/40 hover:text-espresso/60"
+              }`}
+            >
+              {mode === "consumption" ? "Consumption" : "Payment"}
+            </button>
+          ))}
+        </div>
       </header>
 
       {/* Items Section */}
       <div className="border-b border-espresso/8">
-        <div className="flex items-center justify-between px-4 pt-3 pb-1">
-          {store.inPersonMode ? (
-            <button
-              type="button"
-              onClick={store.selectAllItems}
-              className="text-xs font-medium text-sage hover:text-sage/80 uppercase tracking-wider transition-colors"
-            >
-              {store.expenses.every((e) => (store.assignments[e.id] || []).includes(store.assignmentMode!.type === "person" ? store.assignmentMode!.personId : ""))
-                ? "Deselect All"
-                : "Select All"}
-            </button>
-          ) : (
-            <span className="text-xs font-medium text-espresso/50 uppercase tracking-wider">
-              Items
-            </span>
-          )}
-          <div className="flex gap-0.5 bg-cream-dark/50 rounded-lg p-0.5">
-            {(["total", "each"] as const).map((mode) => (
+        {!isPaymentMode && store.expenses.length > 0 && (
+          <div className="flex items-center justify-between px-4 pt-3 pb-1">
+            {store.inPersonMode ? (
               <button
-                key={mode}
                 type="button"
-                onClick={() => store.setPricingMode(mode)}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
-                  store.pricingMode === mode
-                    ? "bg-white text-espresso shadow-sm"
-                    : "text-espresso/40 hover:text-espresso/60"
-                }`}
+                onClick={store.selectAllItems}
+                className="text-xs font-medium text-sage hover:text-sage/80 uppercase tracking-wider transition-colors"
               >
-                {mode === "total" ? "Total" : "Each"}
+                {store.expenses.every((e) => (store.assignments[e.id] || []).includes(store.assignmentMode!.type === "person" ? store.assignmentMode!.personId : ""))
+                  ? "Deselect All"
+                  : "Select All"}
               </button>
-            ))}
+            ) : (
+              <span className="text-xs font-medium text-espresso/50 uppercase tracking-wider">
+                Items
+              </span>
+            )}
+            <div className="flex gap-0.5 bg-cream-dark/50 rounded-lg p-0.5">
+              {(["total", "each"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => store.setPricingMode(mode)}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                    store.pricingMode === mode
+                      ? "bg-white text-espresso shadow-sm"
+                      : "text-espresso/40 hover:text-espresso/60"
+                  }`}
+                >
+                  {mode === "total" ? "Total" : "Each"}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        {store.expenses.length > 0 && (
+        {!isPaymentMode && store.expenses.length > 0 && (
           <ul className="divide-y divide-espresso/8">
             {store.expenses.map((expense, index) => {
               const assignedCount = (store.assignments[expense.id] || []).length;
@@ -100,6 +126,7 @@ export function ExpenseForm() {
                   index={index}
                   assignedCount={assignedCount}
                   pricingMode={store.pricingMode}
+                  currency={store.currency}
                   isActiveItem={isActiveItem}
                   isDimmedItem={isDimmedItem}
                   isPersonModeRow={store.inPersonMode}
@@ -121,59 +148,97 @@ export function ExpenseForm() {
         )}
 
         {/* Total + Add Button */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-espresso/8">
-          <span className="text-sm font-medium text-espresso-light/60">
+        <div className="flex items-center gap-3 px-4 py-3 border-t border-espresso/8">
+          <span className="flex-shrink-0 text-sm font-medium text-espresso-light/60">
             Total
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center justify-end gap-2">
             {store.hasItems ? (
-              <span className="text-xl font-display font-bold text-espresso">
-                ${formatPrice(store.total)}
+              <span className="text-xl font-display font-bold text-espresso flex items-baseline gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => setShowCurrencySelector(true)}
+                  className="text-xs font-body font-semibold text-espresso/40 border-b border-dashed border-espresso/30 hover:text-espresso/60 hover:border-espresso/50 transition-colors leading-none"
+                  title="Change currency"
+                >
+                  {getCurrencySymbol(store.currency)}
+                </button>
+                {formatAmount(store.total, store.currency)}
               </span>
-            ) : (
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg font-display font-semibold text-espresso/40">
-                  $
-                </span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  enterKeyHint={hasEditablePersonInputs ? "next" : "done"}
-                  value={store.manualTotal}
-                  onChange={(e) => store.setManualTotal(e.target.value)}
-                  placeholder="0.00"
-                  className="input-glow w-28 pl-7 pr-3 py-1.5 text-xl font-display font-bold text-right text-espresso bg-cream-dark/50 rounded-lg border border-transparent focus:border-terracotta/30 focus:bg-white outline-none transition-all placeholder:text-espresso/20"
-                />
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={store.addExpense}
-              className={`w-7 h-7 rounded-full bg-terracotta/10 text-terracotta hover:bg-terracotta/20 active:bg-terracotta/30 flex items-center justify-center transition-colors ${store.inAssignmentMode ? "invisible" : ""}`}
-              aria-label="Add expense"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
+            ) : (() => {
+              const sym = getCurrencySymbol(store.currency);
+              const symTextClass = 'text-xs font-semibold';
+              const inputPl = sym.length <= 1 ? 'pl-8' : sym.length <= 2 ? 'pl-9' : 'pl-10';
+              return (
+                <div className="relative flex-1 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrencySelector(true)}
+                    className={`absolute left-1.5 top-1/2 -translate-y-1/2 px-2 py-1 rounded-md bg-espresso/8 text-espresso/50 hover:bg-espresso/12 hover:text-espresso/70 active:bg-espresso/16 transition-colors z-10 ${symTextClass}`}
+                    title="Change currency"
+                  >
+                    {sym}
+                  </button>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    enterKeyHint={hasEditablePersonInputs ? "next" : "done"}
+                    value={store.manualTotal}
+                    onChange={(e) => store.setManualTotal(e.target.value)}
+                    placeholder="0.00"
+                    className={`input-glow w-full ${inputPl} pr-3 py-1.5 text-xl font-display font-bold text-right text-espresso bg-cream-dark/50 rounded-lg border border-transparent focus:border-terracotta/30 focus:bg-white outline-none transition-all placeholder:text-espresso/20`}
+                  />
+                </div>
+              );
+            })()}
+            {!isPaymentMode && (
+              <button
+                type="button"
+                onClick={store.addExpense}
+                className={`w-7 h-7 rounded-full bg-terracotta/10 text-terracotta hover:bg-terracotta/20 active:bg-terracotta/30 flex items-center justify-center transition-colors ${store.inAssignmentMode ? "invisible" : ""}`}
+                aria-label="Add expense"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-            </button>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Remaining to Pay (payment mode only) */}
+        {isPaymentMode && store.total > 0 && (
+          <div className="flex items-center justify-between px-4 py-2 border-t border-espresso/8">
+            <span className="text-sm font-medium text-espresso-light/60">
+              Remaining
+            </span>
+            <span className={`text-base font-display font-semibold ${
+              store.remainingToPay < -0.01
+                ? "text-terracotta"
+                : store.remainingToPay < 0.01
+                  ? "text-sage"
+                  : "text-espresso"
+            }`}>
+              <span className={`opacity-60 ${currencySymClass}`}>{currencySym}</span>&thinsp;{formatAmount(store.remainingToPay, store.currency)}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* People Section */}
       <div>
         <div className="flex items-center justify-between px-4 py-2 border-t border-espresso/8">
-          {store.inItemMode ? (
+          {!isPaymentMode && store.inItemMode ? (
             <button
               type="button"
               onClick={store.selectAllPeople}
@@ -185,25 +250,37 @@ export function ExpenseForm() {
             </button>
           ) : (
             <span className="text-xs font-medium text-espresso/50 uppercase tracking-wider">
-              Split
+              {isPaymentMode ? "Payments" : "Split"}
             </span>
           )}
-          <div className="flex gap-1 bg-cream-dark/50 rounded-lg p-0.5">
-            {(["equally", "amounts"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => store.setSplitMode(mode)}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
-                  store.splitMode === mode
-                    ? "bg-white text-espresso shadow-sm"
-                    : "text-espresso/40 hover:text-espresso/60"
-                }`}
-              >
-                {mode.charAt(0).toUpperCase() + mode.slice(1)}
-              </button>
-            ))}
-          </div>
+          {isPaymentMode && focusedPaymentPersonId !== null && store.total > 0 && (
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => store.updatePersonPaid(focusedPaymentPersonId, store.total.toFixed(2))}
+              className="px-2.5 py-1 text-[11px] font-semibold text-terracotta bg-terracotta/10 rounded-full hover:bg-terracotta/20 active:bg-terracotta/30 transition-colors"
+            >
+              Paid Full Bill
+            </button>
+          )}
+          {!isPaymentMode && (
+            <div className="flex gap-1 bg-cream-dark/50 rounded-lg p-0.5">
+              {(["equally", "amounts"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => store.setSplitMode(mode)}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                    store.splitMode === mode
+                      ? "bg-white text-espresso shadow-sm"
+                      : "text-espresso/40 hover:text-espresso/60"
+                  }`}
+                >
+                  {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <ul className="divide-y divide-espresso/8">
@@ -216,9 +293,10 @@ export function ExpenseForm() {
                 : ""
               : person.amount;
 
-            const isActivePerson = store.inPersonMode && store.assignmentMode!.type === "person" && store.assignmentMode!.personId === person.id;
-            const isDimmedPerson = store.inPersonMode && !isActivePerson;
+            const isActivePerson = !isPaymentMode && store.inPersonMode && store.assignmentMode!.type === "person" && store.assignmentMode!.personId === person.id;
+            const isDimmedPerson = !isPaymentMode && store.inPersonMode && !isActivePerson;
             const isAssignedInItemMode =
+              !isPaymentMode &&
               store.inItemMode &&
               store.assignmentMode!.type === "item" &&
               (store.assignments[store.assignmentMode!.itemId] || []).includes(person.id);
@@ -228,15 +306,21 @@ export function ExpenseForm() {
                 key={person.id}
                 person={person}
                 index={index}
+                currency={store.currency}
                 computedAmount={store.computedAmounts[person.id] || 0}
                 displayedAmount={displayedAmount}
                 isEqual={isEqual}
                 isActivePerson={isActivePerson}
                 isDimmedPerson={isDimmedPerson}
-                isItemModeRow={store.inItemMode}
+                isItemModeRow={!isPaymentMode && store.inItemMode}
                 isAssignedInItemMode={isAssignedInItemMode}
                 isLastInput={lastPersonIsLast && index === store.people.length - 1}
                 focusNewId={store.focusNewId}
+                isPaymentMode={isPaymentMode}
+                paidAmount={person.paid}
+                onPaidFocus={() => setFocusedPaymentPersonId(person.id)}
+                onPaidBlur={() => setFocusedPaymentPersonId(null)}
+                onUpdatePaid={(paid) => store.updatePersonPaid(person.id, paid)}
                 onToggleAssignment={() =>
                   store.assignmentMode?.type === "item" &&
                   store.toggleAssignment(store.assignmentMode.itemId, person.id)
@@ -253,7 +337,7 @@ export function ExpenseForm() {
         {/* Add Person Button */}
         <button
           onClick={store.addPerson}
-          className={`w-full flex items-center gap-2 pl-4 pr-3 py-2.5 border-t border-espresso/8 text-sm font-medium text-terracotta hover:bg-cream-dark/40 transition-all ${store.inAssignmentMode ? "invisible" : ""}`}
+          className={`w-full flex items-center gap-2 pl-4 pr-3 py-2.5 border-t border-espresso/8 text-sm font-medium text-terracotta hover:bg-cream-dark/40 transition-all ${!isPaymentMode && store.inAssignmentMode ? "invisible" : ""}`}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -263,13 +347,28 @@ export function ExpenseForm() {
       </div>
 
       {/* Summary */}
-      {!store.inAssignmentMode && (
+      {!isPaymentMode && !store.inAssignmentMode && (
         <SummarySection
+          currency={store.currency}
           coveredAmount={store.coveredAmount}
           remaining={store.remaining}
           isBalanced={store.isBalanced}
           isOver={store.isOver}
           canSubmit={store.isBalanced && store.people.length > 0 && store.total > 0}
+          onPayment={() => store.setViewMode("payment")}
+        />
+      )}
+
+      {/* Currency Selector */}
+      {showCurrencySelector && (
+        <CurrencySelector
+          currency={store.currency}
+          localCurrency={localCurrencyRef.current}
+          onSelect={(code) => {
+            store.setCurrency(code);
+            setShowCurrencySelector(false);
+          }}
+          onClose={() => setShowCurrencySelector(false)}
         />
       )}
     </div>

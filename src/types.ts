@@ -26,9 +26,3 @@ export const SAMPLE_PEOPLE: Person[] = [
 
 let nextId = 0;
 export const genId = () => `id-${++nextId}`;
-
-export const formatPrice = (value: number) =>
-  value.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });

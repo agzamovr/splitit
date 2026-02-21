@@ -1,9 +1,11 @@
 import { type MutableRefObject } from "react";
-import { type Person, formatPrice } from "../types";
+import { type Person } from "../types";
+import { formatAmount, getCurrencySymbol, getCurrencySymbolClass } from "../currency";
 
 interface PersonCardProps {
   person: Person;
   index: number;
+  currency: string;
   computedAmount: number;
   displayedAmount: string;
   isEqual: boolean;
@@ -23,6 +25,7 @@ interface PersonCardProps {
 export function PersonCard({
   person,
   index,
+  currency,
   computedAmount,
   displayedAmount,
   isEqual,
@@ -38,6 +41,11 @@ export function PersonCard({
   onUpdateAmount,
   onRemove,
 }: PersonCardProps) {
+  const sym = getCurrencySymbol(currency);
+  const symTextClass = getCurrencySymbolClass(sym);
+  const inputPl = sym.length <= 1 ? 'pl-6' : sym.length <= 2 ? 'pl-8' : 'pl-10';
+  const amountChars = Math.max(5, displayedAmount?.length || 4) + sym.length + 2;
+
   return (
     <li
       className={`animate-slide-up ${isDimmedPerson ? "opacity-30" : ""} transition-opacity`}
@@ -57,9 +65,9 @@ export function PersonCard({
           <span className="flex-1 text-left text-base sm:text-sm font-medium text-espresso truncate min-w-0 px-3 py-1.5 border border-transparent">
             {person.name || "Unnamed"}
           </span>
-          <div className="relative flex-shrink-0 w-24">
-            <span className="block pl-6 pr-2 py-1.5 border border-transparent text-base sm:text-sm font-semibold text-right text-espresso/50 tabular-nums">
-              ${formatPrice(computedAmount)}
+          <div className="flex-shrink-0">
+            <span className="block pl-2 pr-2 py-1.5 text-base sm:text-sm font-semibold text-right text-espresso/50 tabular-nums whitespace-nowrap">
+              <span className={`font-semibold text-espresso/25 ${symTextClass}`}>{sym}</span>&thinsp;{formatAmount(computedAmount, currency)}
             </span>
           </div>
           <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
@@ -107,34 +115,33 @@ export function PersonCard({
             className="input-glow flex-1 min-w-0 px-3 py-1.5 text-base sm:text-sm font-medium text-espresso bg-transparent border border-transparent rounded-lg focus:bg-white focus:border-espresso/10 outline-none transition-all placeholder:text-espresso/30"
           />
 
-          <div className="relative flex-shrink-0 w-24">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-espresso/40">
-              $
-            </span>
-            {isActivePerson ? (
-              <input
-                type="text"
-                value={formatPrice(computedAmount)}
-                readOnly
-                className="w-full pl-6 pr-2 py-1.5 text-base sm:text-sm font-semibold text-right text-espresso rounded-lg border outline-none transition-all bg-sage/10 border-sage/20 text-espresso/60"
-              />
-            ) : (
+          {!isEqual && !isActivePerson ? (
+            <div
+              className="relative"
+              style={{ width: `clamp(5.5rem, ${amountChars}ch, 50%)` }}
+            >
+              <span className={`absolute left-2 top-1/2 -translate-y-1/2 font-semibold text-espresso/25 ${symTextClass}`}>
+                {sym}
+              </span>
               <input
                 type="number"
                 inputMode="decimal"
                 enterKeyHint={isLastInput ? "done" : "next"}
                 value={displayedAmount}
                 onChange={(e) => onUpdateAmount(e.target.value)}
-                readOnly={isEqual}
                 placeholder="0.00"
-                className={`w-full pl-6 pr-2 py-1.5 text-base sm:text-sm font-semibold text-right text-espresso rounded-lg border outline-none transition-all placeholder:text-espresso/20 ${
-                  isEqual
-                    ? "bg-cream-dark/40 border-espresso/5 text-espresso/60"
-                    : "input-glow bg-white border-espresso/10 focus:border-terracotta/30"
-                }`}
+                className={`input-glow w-full ${inputPl} pr-2 py-1.5 text-base sm:text-sm font-semibold text-right text-espresso rounded-lg border outline-none transition-all placeholder:text-espresso/20 bg-white border-espresso/10 focus:border-terracotta/30`}
               />
-            )}
-          </div>
+            </div>
+          ) : (
+            <span className={`flex-shrink-0 text-base sm:text-sm font-semibold tabular-nums whitespace-nowrap ${
+              isActivePerson ? "text-sage" : "text-espresso/50"
+            }`}>
+              {computedAmount > 0
+                ? <><span className={`font-semibold ${symTextClass} ${isActivePerson ? "opacity-60" : "text-espresso/25"}`}>{sym}</span>&thinsp;{formatAmount(computedAmount, currency)}</>
+                : "—"}
+            </span>
+          )}
 
           <button
             type="button"
