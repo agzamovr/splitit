@@ -18,7 +18,12 @@ export function useExpenseStore() {
   const focusNewId = useRef<string | null>(null);
 
   const [currency, setCurrency] = useState<string>(() => detectCurrency());
-  const [pricingMode, setPricingMode] = useState<PricingMode>("total");
+  const [pricingMode, setPricingModeRaw] = useState<PricingMode>("total");
+  const setPricingMode = (mode: PricingMode) => {
+    setPricingModeRaw(mode);
+    // Clear per-item overrides so the global switch applies uniformly
+    setExpenses((prev) => prev.map((e) => ({ ...e, pricingMode: undefined })));
+  };
   const [assignments, setAssignments] = useState<Record<string, string[]>>({});
   const [assignmentMode, setAssignmentMode] = useState<AssignmentMode>(null);
   const [viewMode, setViewModeState] = useState<ViewMode>("consumption");
@@ -35,7 +40,8 @@ export function useExpenseStore() {
   const total = hasItems
     ? expenses.reduce((sum, e) => {
         const price = parseFloat(e.price) || 0;
-        if (pricingMode === "each") {
+        const mode = e.pricingMode ?? pricingMode;
+        if (mode === "each") {
           return sum + price * (assignments[e.id] || []).length;
         }
         return sum + price;
@@ -53,7 +59,8 @@ export function useExpenseStore() {
       const price = parseFloat(expense.price) || 0;
       const assigned = assignments[expense.id] || [];
       if (assigned.length === 0 || price === 0) continue;
-      if (pricingMode === "each") {
+      const mode = expense.pricingMode ?? pricingMode;
+      if (mode === "each") {
         for (const pid of assigned) {
           if (computedAmounts[pid] !== undefined) {
             computedAmounts[pid] += price;
@@ -163,6 +170,12 @@ export function useExpenseStore() {
   const updateExpensePrice = (id: string, price: string) => {
     setExpenses((prev) =>
       prev.map((e) => (e.id === id ? { ...e, price } : e))
+    );
+  };
+
+  const updateExpensePricingMode = (id: string, mode: PricingMode | undefined) => {
+    setExpenses((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, pricingMode: mode } : e))
     );
   };
 
@@ -284,6 +297,7 @@ export function useExpenseStore() {
     removeExpense,
     updateExpenseDescription,
     updateExpensePrice,
+    updateExpensePricingMode,
     setPricingMode,
     addPerson,
     removePerson,

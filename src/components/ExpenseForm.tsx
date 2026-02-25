@@ -120,6 +120,7 @@ export function ExpenseForm() {
                   index={index}
                   assignedCount={assignedCount}
                   pricingMode={store.pricingMode}
+                  effectivePricingMode={expense.pricingMode ?? store.pricingMode}
                   currency={store.currency}
                   isActiveItem={isActiveItem}
                   isDimmedItem={isDimmedItem}
@@ -134,6 +135,7 @@ export function ExpenseForm() {
                   onItemFocus={() => store.handleItemFocus(expense.id)}
                   onUpdateDescription={(desc) => store.updateExpenseDescription(expense.id, desc)}
                   onUpdatePrice={(price) => store.updateExpensePrice(expense.id, price)}
+                  onUpdatePricingMode={(mode) => store.updateExpensePricingMode(expense.id, mode)}
                   onRemove={() => store.removeExpense(expense.id)}
                 />
               );

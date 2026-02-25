@@ -5,6 +5,7 @@ export interface Expense {
   id: string;
   description: string;
   price: string;
+  pricingMode?: PricingMode; // per-item override; falls back to global when undefined
 }
 
 export interface Person {
