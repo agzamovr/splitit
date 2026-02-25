@@ -55,12 +55,14 @@ export function ExpenseForm() {
         }
       }}
     >
-      {/* Header */}
-      <header className="px-4 py-3 border-b border-espresso/8">
-        <h1 className="text-base font-semibold text-espresso tracking-tight">
-          Split the Bill
-        </h1>
-      </header>
+      {/* Header – hidden inside Telegram Mini App (Telegram shows its own title bar) */}
+      {!window.Telegram?.WebApp && (
+        <header className="px-4 py-3 border-b border-espresso/8">
+          <h1 className="text-base font-semibold text-espresso tracking-tight">
+            Split the Bill
+          </h1>
+        </header>
+      )}
 
       {/* Items Section */}
       <div className="border-b border-espresso/8">
