@@ -7,6 +7,7 @@ interface ExpenseRowProps {
   index: number;
   assignedCount: number;
   pricingMode: PricingMode;
+  effectivePricingMode: PricingMode;
   currency: string;
   isActiveItem: boolean;
   isDimmedItem: boolean;
@@ -18,6 +19,7 @@ interface ExpenseRowProps {
   onItemFocus: () => void;
   onUpdateDescription: (description: string) => void;
   onUpdatePrice: (price: string) => void;
+  onUpdatePricingMode: (mode: PricingMode | undefined) => void;
   onRemove: () => void;
 }
 
@@ -26,6 +28,7 @@ export function ExpenseRow({
   index,
   assignedCount,
   pricingMode,
+  effectivePricingMode,
   currency,
   isActiveItem,
   isDimmedItem,
@@ -37,6 +40,7 @@ export function ExpenseRow({
   onItemFocus,
   onUpdateDescription,
   onUpdatePrice,
+  onUpdatePricingMode,
   onRemove,
 }: ExpenseRowProps) {
   const sym = getCurrencySymbol(currency);
@@ -153,11 +157,32 @@ export function ExpenseRow({
                 placeholder="0.00"
                 className={`input-glow w-full ${inputPl} pr-2 py-1.5 text-base sm:text-sm font-semibold text-right text-espresso bg-white rounded-lg border border-espresso/10 focus:border-terracotta/30 outline-none transition-all placeholder:text-espresso/20`}
               />
-              {pricingMode === "each" && assignedCount > 0 && (
-                <div className="text-[10px] text-espresso/50 text-right pr-1 mt-0.5 whitespace-nowrap">
-                  = {sym}&thinsp;{formatAmount((parseFloat(expense.price) || 0) * assignedCount, currency)}
-                </div>
-              )}
+              <div className="flex items-center justify-between mt-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Cycle: if matching global → override to opposite; if already overridden → clear back to global
+                    if (expense.pricingMode === undefined) {
+                      onUpdatePricingMode(pricingMode === "total" ? "each" : "total");
+                    } else {
+                      onUpdatePricingMode(undefined);
+                    }
+                  }}
+                  className={`px-1.5 py-px text-[10px] font-medium rounded transition-all ${
+                    expense.pricingMode !== undefined
+                      ? "bg-terracotta/15 text-terracotta"
+                      : "text-espresso/25 hover:text-espresso/40"
+                  }`}
+                  title={expense.pricingMode !== undefined ? "Per-item override active — tap to reset to global" : "Tap to override price type for this item"}
+                >
+                  {effectivePricingMode === "total" ? "tot" : "each"}
+                </button>
+                {effectivePricingMode === "each" && assignedCount > 0 && (
+                  <span className="text-[10px] text-espresso/50 pr-1 whitespace-nowrap">
+                    = {sym}&thinsp;{formatAmount((parseFloat(expense.price) || 0) * assignedCount, currency)}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
