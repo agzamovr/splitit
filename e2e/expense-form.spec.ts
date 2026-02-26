@@ -678,6 +678,74 @@ test.describe("Settle view", () => {
   });
 });
 
+test.describe("Settle view – Own mode", () => {
+  test.beforeEach(async ({ page }) => {
+    const totalInput = page.locator('input[type="number"].text-xl');
+    await totalInput.fill("100");
+    await page.getByRole("button", { name: "Settle" }).click();
+  });
+
+  test("switcher is visible with 'One Person' active by default", async ({ page }) => {
+    await expect(page.getByRole("button", { name: "One Person", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Everyone", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "One Person", exact: true })).toHaveClass(/bg-white/);
+    await expect(page.getByRole("button", { name: "Everyone", exact: true })).not.toHaveClass(/bg-white/);
+  });
+
+  test("switching to 'Everyone' hides payer selection and shows all four as debtors", async ({ page }) => {
+    await page.getByRole("button", { name: "Everyone" }).click();
+    await expect(page.getByText("Set as Payer")).toHaveCount(0);
+    const debtorBtns = page.locator("button").filter({ hasText: "owes" });
+    await expect(debtorBtns).toHaveCount(4);
+  });
+
+  test("each person shows the correct individual amount in Everyone mode", async ({ page }) => {
+    await page.getByRole("button", { name: "Everyone" }).click();
+    const debtorBtns = page.locator("button").filter({ hasText: "owes" });
+    await expect(debtorBtns.nth(0)).toContainText("25.00");
+    await expect(debtorBtns.nth(1)).toContainText("25.00");
+    await expect(debtorBtns.nth(2)).toContainText("25.00");
+    await expect(debtorBtns.nth(3)).toContainText("25.00");
+  });
+
+  test("'To Collect' decreases as people are marked paid in Everyone mode", async ({ page }) => {
+    await page.getByRole("button", { name: "Everyone" }).click();
+    const toCollectRow = page.locator("div").filter({ hasText: "To Collect" }).last();
+    await expect(toCollectRow).toContainText("100.00");
+    await page.locator("button").filter({ hasText: "Rus" }).filter({ hasText: "owes" }).click();
+    await expect(toCollectRow).toContainText("75.00");
+    await page.locator("button").filter({ hasText: "Don" }).filter({ hasText: "owes" }).click();
+    await expect(toCollectRow).toContainText("50.00");
+  });
+
+  test("'Collected' badge appears when all four are marked paid in Everyone mode", async ({ page }) => {
+    await page.getByRole("button", { name: "Everyone" }).click();
+    for (const name of ["Rus", "Don", "Art", "Faz"]) {
+      await page.locator("button").filter({ hasText: name }).filter({ hasText: "owes" }).click();
+    }
+    await expect(page.getByText("Collected")).toBeVisible();
+    const toCollectRow = page.locator("div").filter({ hasText: "To Collect" }).last();
+    await expect(toCollectRow).toContainText("0.00");
+  });
+
+  test("switching Everyone → One Person resets settled state", async ({ page }) => {
+    await page.getByRole("button", { name: "Everyone" }).click();
+    await page.locator("button").filter({ hasText: "Rus" }).filter({ hasText: "owes" }).click();
+    await page.locator("button").filter({ hasText: "Don" }).filter({ hasText: "owes" }).click();
+    await page.getByRole("button", { name: "One Person", exact: true }).click();
+    await expect(page.getByText("Set as Payer")).toHaveCount(4);
+  });
+
+  test("sub-mode persists when switching Settle → Consumption → Settle", async ({ page }) => {
+    await page.getByRole("button", { name: "Everyone" }).click();
+    await expect(page.getByRole("button", { name: "Everyone" })).toHaveClass(/bg-white/);
+    await page.getByRole("button", { name: "Consumption" }).click();
+    await expect(page.getByText("Balanced")).toBeVisible();
+    await page.getByRole("button", { name: "Settle" }).click();
+    await expect(page.getByRole("button", { name: "Everyone" })).toHaveClass(/bg-white/);
+  });
+});
+
 test.describe("Per-item pricing mode", () => {
   test("pricing mode toggle appears in header only when an expense item is active", async ({
     page,

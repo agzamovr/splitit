@@ -13,10 +13,20 @@ export function ExpenseForm() {
   const [showCurrencySelector, setShowCurrencySelector] = useState(false);
   const [settledDebtorIds, setSettledDebtorIds] = useState<Set<string>>(new Set());
   const [focusedExpenseId, setFocusedExpenseId] = useState<string | null>(null);
+  const [settleSubMode, setSettleSubMode] = useState<"payer" | "own">("payer");
 
   useEffect(() => {
     setSettledDebtorIds(new Set());
   }, [store.payerId]);
+
+  const handleSettleSubModeChange = (mode: "payer" | "own") => {
+    if (mode === settleSubMode) return;
+    setSettleSubMode(mode);
+    setSettledDebtorIds(new Set());
+    if (mode === "own" && store.payerId) {
+      store.setPayerId(store.payerId);
+    }
+  };
 
   const handleEnterNav = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Enter" || !(e.target instanceof HTMLInputElement)) return;
@@ -234,19 +244,39 @@ export function ExpenseForm() {
         {isPaymentMode ? (
           // ── Settle mode: single stable <ul>, headers injected as <li> siblings ──
           <>
-            <div className="border-t border-espresso/8 px-4 py-2">
+            <div className="flex items-center justify-between border-t border-espresso/8 px-4 py-2">
               <span className="text-xs font-medium text-espresso/40 uppercase tracking-wider">
-                {store.payerId ? "Paid by" : "Who paid?"}
+                {settleSubMode === "own"
+                  ? "Who owes"
+                  : store.payerId ? "Paid by" : "Who paid?"}
               </span>
+              <div className="flex gap-0.5 bg-cream-dark/50 rounded-lg p-0.5">
+                {(["payer", "own"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => handleSettleSubModeChange(mode)}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-200 ease-out ${
+                      settleSubMode === mode
+                        ? "bg-white text-espresso shadow-sm"
+                        : "text-espresso/40 hover:text-espresso/60"
+                    }`}
+                  >
+                    {mode === "payer" ? "One Person" : "Everyone"}
+                  </button>
+                ))}
+              </div>
             </div>
             <ul className="divide-y divide-espresso/8">
               {settleOrder.map((person, index) => {
                 const isPayer = person.id === store.payerId;
                 const settleVariant: "select" | "payer" | "debt" =
-                  !store.payerId ? "select" : isPayer ? "payer" : "debt";
+                  settleSubMode === "own"
+                    ? "debt"
+                    : !store.payerId ? "select" : isPayer ? "payer" : "debt";
                 // Inject "Who owes" header as a <li> before the first debtor,
                 // keeping PersonCard keys stable so FLIP animation stays intact.
-                const owesHeader = store.payerId && !isPayer && index === 1
+                const owesHeader = settleSubMode === "payer" && store.payerId && !isPayer && index === 1
                   ? <li key="h-owes" className="px-4 py-2"><span className="text-xs font-medium text-espresso/40 uppercase tracking-wider">Who owes</span></li>
                   : null;
                 return [
@@ -370,13 +400,24 @@ export function ExpenseForm() {
       {!store.inAssignmentMode && (
         <SummarySection
           currency={store.currency}
+          isSettleMode={isPaymentMode}
+          payerName={isPaymentMode && settleSubMode === "payer" ? payerName : undefined}
           coveredAmount={(() => {
             if (!isPaymentMode) return store.coveredAmount;
-            const payerShare = store.payerId ? (store.computedAmounts[store.payerId] || 0) : 0;
-            return payerShare;
+            if (settleSubMode === "own") {
+              return store.people
+                .filter(p => settledDebtorIds.has(p.id))
+                .reduce((sum, p) => sum + (store.computedAmounts[p.id] || 0), 0);
+            }
+            return store.payerId ? (store.computedAmounts[store.payerId] || 0) : 0;
           })()}
           remaining={(() => {
             if (!isPaymentMode) return store.remaining;
+            if (settleSubMode === "own") {
+              return store.people
+                .filter(p => !settledDebtorIds.has(p.id))
+                .reduce((sum, p) => sum + (store.computedAmounts[p.id] || 0), 0);
+            }
             if (!store.payerId) return store.total;
             return store.people
               .filter(p => p.id !== store.payerId && !settledDebtorIds.has(p.id))
@@ -384,16 +425,14 @@ export function ExpenseForm() {
           })()}
           isBalanced={(() => {
             if (!isPaymentMode) return store.isBalanced;
+            if (settleSubMode === "own") return store.people.every(p => settledDebtorIds.has(p.id));
             if (!store.payerId) return false;
-            return store.people
-              .filter(p => p.id !== store.payerId)
-              .every(p => settledDebtorIds.has(p.id));
+            return store.people.filter(p => p.id !== store.payerId).every(p => settledDebtorIds.has(p.id));
           })()}
           isOver={isPaymentMode ? false : store.isOver}
           canSubmit={store.isBalanced && store.people.length > 0 && store.total > 0}
           viewMode={store.viewMode}
           setViewMode={store.setViewMode}
-          payerName={isPaymentMode ? payerName : undefined}
         />
       )}
 
