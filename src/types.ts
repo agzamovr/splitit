@@ -5,6 +5,7 @@ export interface Expense {
   id: string;
   description: string;
   price: string;
+  pricingMode: PricingMode;
 }
 
 export interface Person {

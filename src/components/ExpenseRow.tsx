@@ -1,12 +1,11 @@
 import { type MutableRefObject } from "react";
-import { type Expense, type PricingMode } from "../types";
+import { type Expense } from "../types";
 import { formatAmount, getCurrencySymbol, getCurrencySymbolClass } from "../currency";
 
 interface ExpenseRowProps {
   expense: Expense;
   index: number;
   assignedCount: number;
-  pricingMode: PricingMode;
   currency: string;
   isActiveItem: boolean;
   isDimmedItem: boolean;
@@ -18,6 +17,8 @@ interface ExpenseRowProps {
   onItemFocus: () => void;
   onUpdateDescription: (description: string) => void;
   onUpdatePrice: (price: string) => void;
+  onRowFocus?: () => void;
+  onRowBlur?: (e: React.FocusEvent<HTMLDivElement>) => void;
   onRemove: () => void;
 }
 
@@ -25,7 +26,6 @@ export function ExpenseRow({
   expense,
   index,
   assignedCount,
-  pricingMode,
   currency,
   isActiveItem,
   isDimmedItem,
@@ -37,12 +37,15 @@ export function ExpenseRow({
   onItemFocus,
   onUpdateDescription,
   onUpdatePrice,
+  onRowFocus,
+  onRowBlur,
   onRemove,
 }: ExpenseRowProps) {
   const sym = getCurrencySymbol(currency);
   const symTextClass = getCurrencySymbolClass(sym);
-  const inputPl = sym.length <= 1 ? 'pl-6' : sym.length <= 2 ? 'pl-8' : 'pl-10';
-  const priceChars = Math.max(5, expense.price?.length || 4) + sym.length + 2;
+  const pricingMode = expense.pricingMode;
+  const modeLabel = pricingMode === "each" ? "ea" : "tot";
+  const priceChars = Math.max(5, expense.price?.length || 4) + 4;
 
   const PeopleIcon = () => (
     <span className="relative">
@@ -79,7 +82,7 @@ export function ExpenseRow({
           {/* Price: fixed min-width so it never shrinks below what a large amount needs */}
           <div className="flex-shrink-0 min-w-[7rem]">
             <span className="block py-1.5 text-base sm:text-sm font-semibold text-right text-espresso whitespace-nowrap">
-              <span className={`opacity-60 ${symTextClass}`}>{sym}</span>&thinsp;{formatAmount(parseFloat(expense.price) || 0, currency)}
+              <span className="text-[10px] font-bold text-espresso/35 tracking-tight">{modeLabel}</span>&thinsp;{formatAmount(parseFloat(expense.price) || 0, currency)}
             </span>
           </div>
 
@@ -102,11 +105,15 @@ export function ExpenseRow({
       ) : (
         // Edit row: top-aligned so the per-item total label below the price box
         // never disturbs the description input, and the price box never shrinks.
-        <div className={`flex items-start gap-3 pl-4 pr-3 py-2.5 transition-all ${
-          isActiveItem
-            ? "bg-sage/5 border-l-2 border-l-sage pl-[14px]"
-            : ""
-        }`}>
+        <div
+          className={`flex items-start gap-3 pl-4 pr-3 py-2.5 transition-all ${
+            isActiveItem
+              ? "bg-sage/5 border-l-2 border-l-sage pl-[14px]"
+              : ""
+          }`}
+          onFocus={onRowFocus}
+          onBlur={onRowBlur}
+        >
           <button
             type="button"
             onClick={onItemFocus}
@@ -138,21 +145,23 @@ export function ExpenseRow({
                 the inner wrapper. Description wraps below on narrow screens
                 when the price is large. */}
             <div
-              className="relative ml-auto"
+              className="ml-auto"
               style={{ width: `clamp(5.5rem, ${priceChars}ch, 50%)` }}
             >
-              <span className={`absolute left-2 top-1/2 -translate-y-1/2 font-semibold text-espresso/25 ${symTextClass}`}>
-                {sym}
-              </span>
-              <input
-                type="number"
-                inputMode="decimal"
-                enterKeyHint={isLastInput ? "done" : "next"}
-                value={expense.price}
-                onChange={(e) => onUpdatePrice(e.target.value)}
-                placeholder="0.00"
-                className={`input-glow w-full ${inputPl} pr-2 py-1.5 text-base sm:text-sm font-semibold text-right text-espresso bg-white rounded-lg border border-espresso/10 focus:border-terracotta/30 outline-none transition-all placeholder:text-espresso/20`}
-              />
+              <div className="relative">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-espresso/35 tracking-tight leading-none">
+                  {modeLabel}
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  enterKeyHint={isLastInput ? "done" : "next"}
+                  value={expense.price}
+                  onChange={(e) => onUpdatePrice(e.target.value)}
+                  placeholder="0.00"
+                  className="input-glow w-full pl-7 pr-2 py-1.5 text-base sm:text-sm font-semibold text-right text-espresso bg-white rounded-lg border border-espresso/10 focus:border-terracotta/30 outline-none transition-all placeholder:text-espresso/20"
+                />
+              </div>
               {pricingMode === "each" && assignedCount > 0 && (
                 <div className="text-[10px] text-espresso/50 text-right pr-1 mt-0.5 whitespace-nowrap">
                   = {sym}&thinsp;{formatAmount((parseFloat(expense.price) || 0) * assignedCount, currency)}

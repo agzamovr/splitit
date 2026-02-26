@@ -679,7 +679,7 @@ test.describe("Settle view", () => {
 });
 
 test.describe("Per-item pricing mode", () => {
-  test("pricing mode toggle appears only when expenses are added", async ({
+  test("pricing mode toggle appears in header only when an expense item is active", async ({
     page,
   }) => {
     await expect(
@@ -689,6 +689,12 @@ test.describe("Per-item pricing mode", () => {
       page.getByRole("button", { name: "Each" })
     ).not.toBeVisible();
     await page.getByRole("button", { name: "Add expense" }).click();
+    // Switcher is hidden until item is activated via the people icon
+    await expect(
+      page.getByRole("button", { name: "Total" })
+    ).not.toBeVisible();
+    // Activate the item by clicking the people icon
+    await page.getByRole("button", { name: "Assign people to this expense" }).click();
     await expect(page.getByRole("button", { name: "Total" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Each" })).toBeVisible();
   });
@@ -701,11 +707,13 @@ test.describe("Per-item pricing mode", () => {
       .locator('li input[type="number"][placeholder="0.00"]')
       .first();
     await priceInput.fill("10");
-    // All 4 pre-loaded people are auto-assigned; switch to Each mode
+    // Activate the item, switch to Each mode, then exit item mode
+    await page.getByRole("button", { name: "Assign people to this expense" }).click();
     await page.getByRole("button", { name: "Each" }).click();
+    await page.getByRole("button", { name: "Assign people to this expense" }).click();
     // Total = 10 × 4 = 40
     await expect(page.getByText("$40.00")).toBeVisible();
-    // Each person owes 40 / 4 = 10.00 in equally mode
+    // Each person owes 10.00 (each × 1 person in equally mode: 40 / 4 = 10)
     const personRows = page.locator("li", { has: page.getByPlaceholder("Name") });
     await expect(personRows.nth(0)).toContainText("10.00");
     await expect(personRows.nth(1)).toContainText("10.00");
@@ -721,9 +729,103 @@ test.describe("Per-item pricing mode", () => {
       .locator('li input[type="number"][placeholder="0.00"]')
       .first();
     await priceInput.fill("10");
+    // Activate the item and switch to Each mode
+    await page.getByRole("button", { name: "Assign people to this expense" }).click();
     await page.getByRole("button", { name: "Each" }).click();
     await expect(page.getByText("$40.00")).toBeVisible();
     await page.getByRole("button", { name: "Total" }).click();
     await expect(page.getByText("$10.00")).toBeVisible();
+  });
+
+  test("switcher appears when description input is focused", async ({ page }) => {
+    await page.getByRole("button", { name: "Add expense" }).click();
+    await expect(page.getByRole("button", { name: "Total" })).not.toBeVisible();
+    await page.getByPlaceholder("Description").first().click();
+    await expect(page.getByRole("button", { name: "Total" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Each" })).toBeVisible();
+  });
+
+  test("switcher appears when price input is focused", async ({ page }) => {
+    await page.getByRole("button", { name: "Add expense" }).click();
+    await expect(page.getByRole("button", { name: "Total" })).not.toBeVisible();
+    await page.locator('li input[type="number"][placeholder="0.00"]').first().click();
+    await expect(page.getByRole("button", { name: "Total" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Each" })).toBeVisible();
+  });
+
+  test("switcher hides when focus leaves the expense row", async ({ page }) => {
+    await page.getByRole("button", { name: "Add expense" }).click();
+    await page.getByPlaceholder("Description").first().click();
+    await expect(page.getByRole("button", { name: "Total" })).toBeVisible();
+    // Move focus outside the expense row to a person's name input
+    await page.getByPlaceholder("Name").first().click();
+    await expect(page.getByRole("button", { name: "Total" })).not.toBeVisible();
+  });
+
+  test("item label defaults to 'tot' and changes to 'ea' when Each is enabled", async ({
+    page,
+  }) => {
+    await page.getByRole("button", { name: "Add expense" }).click();
+    const expenseRow = page
+      .locator("li")
+      .filter({ has: page.getByPlaceholder("Description") })
+      .first();
+    await expect(expenseRow).toContainText("tot");
+    await page.getByRole("button", { name: "Assign people to this expense" }).click();
+    await page.getByRole("button", { name: "Each" }).click();
+    await expect(expenseRow).toContainText("ea");
+  });
+
+  test("two items have independent pricing modes", async ({ page }) => {
+    await page.getByRole("button", { name: "Add expense" }).click();
+    await page.getByRole("button", { name: "Add expense" }).click();
+    const expenseRows = page
+      .locator("li")
+      .filter({ has: page.getByPlaceholder("Description") });
+    // Switch first item to Each
+    await page.getByRole("button", { name: "Assign people to this expense" }).first().click();
+    await page.getByRole("button", { name: "Each" }).click();
+    // Exit item mode
+    await page.getByRole("button", { name: "Assign people to this expense" }).first().click();
+    // First item shows "ea", second still shows "tot"
+    await expect(expenseRows.first()).toContainText("ea");
+    await expect(expenseRows.last()).toContainText("tot");
+  });
+
+  test("computed total line shows for each-mode items with assigned people", async ({
+    page,
+  }) => {
+    await page.getByRole("button", { name: "Add expense" }).click();
+    await page.locator('li input[type="number"][placeholder="0.00"]').first().fill("10");
+    // Switch to Each (all 4 people auto-assigned)
+    await page.getByRole("button", { name: "Assign people to this expense" }).click();
+    await page.getByRole("button", { name: "Each" }).click();
+    // Exit item mode — computed line should appear
+    await page.getByRole("button", { name: "Assign people to this expense" }).click();
+    // Text contains a thin space between $ and amount, so match loosely
+    await expect(page.getByText(/=.*40\.00/)).toBeVisible();
+  });
+
+  test("computed total line is absent in total mode", async ({ page }) => {
+    await page.getByRole("button", { name: "Add expense" }).click();
+    await page.locator('li input[type="number"][placeholder="0.00"]').first().fill("10");
+    await expect(page.getByText(/^= \$/).first()).not.toBeVisible();
+  });
+
+  test("switcher reflects each-mode item when re-focused after exiting item mode", async ({
+    page,
+  }) => {
+    await page.getByRole("button", { name: "Add expense" }).click();
+    // Enable Each via people icon then exit item mode
+    await page.getByRole("button", { name: "Assign people to this expense" }).click();
+    await page.getByRole("button", { name: "Each" }).click();
+    await page.getByRole("button", { name: "Assign people to this expense" }).click();
+    // Focus the price input — switcher should show Each as active (label is "ea")
+    await page.locator('li input[type="number"][placeholder="0.00"]').first().click();
+    await expect(
+      page.locator("li").filter({ has: page.getByPlaceholder("Description") }).first()
+    ).toContainText("ea");
+    await expect(page.getByRole("button", { name: "Total" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Each" })).toBeVisible();
   });
 });

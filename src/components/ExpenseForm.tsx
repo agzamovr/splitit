@@ -12,6 +12,7 @@ export function ExpenseForm() {
   const localCurrencyRef = useRef(detectCurrency());
   const [showCurrencySelector, setShowCurrencySelector] = useState(false);
   const [settledDebtorIds, setSettledDebtorIds] = useState<Set<string>>(new Set());
+  const [focusedExpenseId, setFocusedExpenseId] = useState<string | null>(null);
 
   useEffect(() => {
     setSettledDebtorIds(new Set());
@@ -83,22 +84,33 @@ export function ExpenseForm() {
                 Items
               </span>
             )}
-            <div className="flex gap-0.5 bg-cream-dark/50 rounded-lg p-0.5">
-              {(["total", "each"] as const).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => store.setPricingMode(mode)}
-                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
-                    store.pricingMode === mode
-                      ? "bg-white text-espresso shadow-sm"
-                      : "text-espresso/40 hover:text-espresso/60"
-                  }`}
-                >
-                  {mode === "total" ? "Total" : "Each"}
-                </button>
-              ))}
-            </div>
+            {(() => {
+              const visible = !store.inPersonMode && (store.inItemMode || focusedExpenseId !== null);
+              const activeItemId = store.inItemMode
+                ? (store.assignmentMode as { type: "item"; itemId: string }).itemId
+                : focusedExpenseId;
+              const activeExpense = activeItemId ? store.expenses.find(e => e.id === activeItemId) : undefined;
+              const activeMode = activeExpense?.pricingMode ?? "total";
+              return (
+                <div className={`flex gap-0.5 bg-cream-dark/50 rounded-lg p-0.5 ${visible ? "" : "invisible"}`}>
+                  {(["total", "each"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => activeItemId && store.updateExpensePricingMode(activeItemId, mode)}
+                      className={`px-2.5 py-1 text-xs font-medium rounded-md ${visible ? "transition-all duration-200 ease-out" : ""} ${
+                        activeMode === mode
+                          ? "bg-white text-espresso shadow-sm"
+                          : "text-espresso/40 hover:text-espresso/60"
+                      }`}
+                    >
+                      {mode === "total" ? "Total" : "Each"}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -119,7 +131,6 @@ export function ExpenseForm() {
                   expense={expense}
                   index={index}
                   assignedCount={assignedCount}
-                  pricingMode={store.pricingMode}
                   currency={store.currency}
                   isActiveItem={isActiveItem}
                   isDimmedItem={isDimmedItem}
@@ -131,9 +142,15 @@ export function ExpenseForm() {
                     store.assignmentMode?.type === "person" &&
                     store.toggleAssignment(expense.id, store.assignmentMode.personId)
                   }
-                  onItemFocus={() => store.handleItemFocus(expense.id)}
+                  onItemFocus={() => { store.handleItemFocus(expense.id); setFocusedExpenseId(null); }}
                   onUpdateDescription={(desc) => store.updateExpenseDescription(expense.id, desc)}
                   onUpdatePrice={(price) => store.updateExpensePrice(expense.id, price)}
+                  onRowFocus={() => setFocusedExpenseId(expense.id)}
+                  onRowBlur={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                      setFocusedExpenseId(null);
+                    }
+                  }}
                   onRemove={() => store.removeExpense(expense.id)}
                 />
               );
