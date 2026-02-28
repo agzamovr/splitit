@@ -41,7 +41,6 @@ export function PersonCard({
   isDimmedPerson = false,
   isItemModeRow = false,
   isAssignedInItemMode = false,
-  isLastInput,
   focusNewId,
   onToggleAssignment,
   onPersonFocus,

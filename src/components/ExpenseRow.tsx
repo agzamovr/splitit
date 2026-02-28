@@ -1,6 +1,6 @@
 import { type MutableRefObject } from "react";
 import { type Expense } from "../types";
-import { formatAmount, getCurrencySymbol, getCurrencySymbolClass } from "../currency";
+import { formatAmount, getCurrencySymbol } from "../currency";
 
 interface ExpenseRowProps {
   expense: Expense;
@@ -31,7 +31,6 @@ export function ExpenseRow({
   isDimmedItem,
   isPersonModeRow,
   isAssignedInPersonMode,
-  isLastInput,
   focusNewId,
   onToggleAssignment,
   onItemFocus,
@@ -42,7 +41,6 @@ export function ExpenseRow({
   onRemove,
 }: ExpenseRowProps) {
   const sym = getCurrencySymbol(currency);
-  const symTextClass = getCurrencySymbolClass(sym);
   const pricingMode = expense.pricingMode;
   const modeLabel = pricingMode === "each" ? "ea" : "tot";
   const priceChars = Math.max(5, expense.price?.length || 4) + 4;
