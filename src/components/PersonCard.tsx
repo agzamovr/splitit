@@ -178,7 +178,7 @@ export function PersonCard({
               }
             }}
             type="text"
-            enterKeyHint={isEqual && isLastInput ? "done" : "next"}
+            enterKeyHint="go"
             value={person.name}
             onChange={(e) => onUpdateName?.(e.target.value)}
             placeholder="Name"
@@ -196,7 +196,7 @@ export function PersonCard({
               <input
                 type="number"
                 inputMode="decimal"
-                enterKeyHint={isLastInput ? "done" : "next"}
+                enterKeyHint="go"
                 value={displayedAmount}
                 onChange={(e) => onUpdateAmount?.(e.target.value)}
                 placeholder="0.00"

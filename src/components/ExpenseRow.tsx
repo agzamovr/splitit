@@ -134,7 +134,7 @@ export function ExpenseRow({
                 }
               }}
               type="text"
-              enterKeyHint="next"
+              enterKeyHint="go"
               value={expense.description}
               onChange={(e) => onUpdateDescription(e.target.value)}
               placeholder="Description"
@@ -155,7 +155,7 @@ export function ExpenseRow({
                 <input
                   type="number"
                   inputMode="decimal"
-                  enterKeyHint={isLastInput ? "done" : "next"}
+                  enterKeyHint="go"
                   value={expense.price}
                   onChange={(e) => onUpdatePrice(e.target.value)}
                   placeholder="0.00"

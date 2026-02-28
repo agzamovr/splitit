@@ -203,7 +203,7 @@ export function ExpenseForm() {
                   <input
                     type="number"
                     inputMode="decimal"
-                    enterKeyHint={hasEditablePersonInputs ? "next" : "done"}
+                    enterKeyHint="go"
                     value={store.manualTotal}
                     onChange={(e) => store.setManualTotal(e.target.value)}
                     placeholder="0.00"
