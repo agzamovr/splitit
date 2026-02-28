@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   type Expense,
   type Person,
@@ -8,7 +8,7 @@ import {
   SAMPLE_PEOPLE,
   genId,
 } from "./types";
-import { detectCurrency } from "./currency";
+import { detectCurrency, detectCurrencyFromEdge } from "./currency";
 
 export function useExpenseStore() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -18,6 +18,13 @@ export function useExpenseStore() {
   const focusNewId = useRef<string | null>(null);
 
   const [currency, setCurrency] = useState<string>(() => detectCurrency());
+  const currencySetByUser = useRef(false);
+
+  useEffect(() => {
+    detectCurrencyFromEdge().then((c) => {
+      if (c && !currencySetByUser.current) setCurrency(c);
+    });
+  }, []);
   const [assignments, setAssignments] = useState<Record<string, string[]>>({});
   const [assignmentMode, setAssignmentMode] = useState<AssignmentMode>(null);
   const [viewMode, setViewModeState] = useState<ViewMode>("consumption");
@@ -262,7 +269,7 @@ export function useExpenseStore() {
     people,
     splitMode,
     currency,
-    setCurrency,
+    setCurrency: (c: string) => { currencySetByUser.current = true; setCurrency(c); },
     assignments,
     assignmentMode,
     viewMode,

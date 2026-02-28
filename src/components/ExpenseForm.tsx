@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { detectCurrency, formatAmount, getCurrencySymbol } from "../currency";
+import { formatAmount, getCurrencySymbol } from "../currency";
 import { useExpenseStore } from "../useExpenseStore";
 import { ExpenseRow } from "./ExpenseRow";
 import { PersonCard } from "./PersonCard";
@@ -9,7 +9,7 @@ import { CurrencySelector } from "./CurrencySelector";
 export function ExpenseForm() {
   const store = useExpenseStore();
   const formRef = useRef<HTMLDivElement>(null);
-  const localCurrencyRef = useRef(detectCurrency());
+  const localCurrencyRef = useRef(store.currency);
   const [showCurrencySelector, setShowCurrencySelector] = useState(false);
   const [settledDebtorIds, setSettledDebtorIds] = useState<Set<string>>(new Set());
   const [focusedExpenseId, setFocusedExpenseId] = useState<string | null>(null);
@@ -18,6 +18,10 @@ export function ExpenseForm() {
   useEffect(() => {
     setSettledDebtorIds(new Set());
   }, [store.payerId]);
+
+  useEffect(() => {
+    localCurrencyRef.current = store.currency;
+  }, [store.currency]);
 
   const handleSettleSubModeChange = (mode: "payer" | "own") => {
     if (mode === settleSubMode) return;

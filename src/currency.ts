@@ -38,6 +38,16 @@ export function detectCurrency(): string {
   }
 }
 
+export async function detectCurrencyFromEdge(): Promise<string | null> {
+  try {
+    const res = await fetch('/api/country');
+    const data = await res.json();
+    return REGION_CURRENCY[(data.country as string)?.toUpperCase() ?? ''] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function getCurrencySymbolClass(sym: string): string {
   return sym.length <= 2 ? 'text-xs' : 'text-[10px] tracking-tight';
 }
