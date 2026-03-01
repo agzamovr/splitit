@@ -6,6 +6,10 @@ test.beforeEach(async ({ page }) => {
 
 test.describe("Initial state", () => {
   test("shows the header", async ({ page }) => {
+    // The Telegram WebApp script in index.html sets window.Telegram.WebApp, which
+    // causes the app to hide its own header. Block that script so the header renders.
+    await page.route("**/telegram-web-app.js", (route) => route.abort());
+    await page.goto("/");
     await expect(
       page.getByRole("heading", { name: "Split the Bill" })
     ).toBeVisible();
@@ -757,7 +761,9 @@ test.describe("Per-item pricing mode", () => {
       page.getByRole("button", { name: "Each" })
     ).not.toBeVisible();
     await page.getByRole("button", { name: "Add expense" }).click();
-    // Switcher is hidden until item is activated via the people icon
+    // Adding an expense auto-focuses the description input; click a person row to
+    // defocus it so we can verify the switcher is hidden without an active row.
+    await page.getByPlaceholder("Name").first().click();
     await expect(
       page.getByRole("button", { name: "Total" })
     ).not.toBeVisible();
@@ -807,6 +813,8 @@ test.describe("Per-item pricing mode", () => {
 
   test("switcher appears when description input is focused", async ({ page }) => {
     await page.getByRole("button", { name: "Add expense" }).click();
+    // Defocus the auto-focused description input before asserting switcher is hidden
+    await page.getByPlaceholder("Name").first().click();
     await expect(page.getByRole("button", { name: "Total" })).not.toBeVisible();
     await page.getByPlaceholder("Description").first().click();
     await expect(page.getByRole("button", { name: "Total" })).toBeVisible();
@@ -815,6 +823,8 @@ test.describe("Per-item pricing mode", () => {
 
   test("switcher appears when price input is focused", async ({ page }) => {
     await page.getByRole("button", { name: "Add expense" }).click();
+    // Defocus the auto-focused description input before asserting switcher is hidden
+    await page.getByPlaceholder("Name").first().click();
     await expect(page.getByRole("button", { name: "Total" })).not.toBeVisible();
     await page.locator('li input[type="number"][placeholder="0.00"]').first().click();
     await expect(page.getByRole("button", { name: "Total" })).toBeVisible();
