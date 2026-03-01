@@ -897,3 +897,84 @@ test.describe("Per-item pricing mode", () => {
     await expect(page.getByRole("button", { name: "Each" })).toBeVisible();
   });
 });
+
+test.describe("Item count per person", () => {
+  // Helper: the people-section <ul> is always the last <ul> on the page.
+  // (Items <ul> is only rendered in consumption mode when expenses exist.)
+  const peopleUl = (page: import("@playwright/test").Page) => page.locator("ul").last();
+
+  test("no item count label in manual total mode (no expense items)", async ({ page }) => {
+    const totalInput = page.locator('input[type="number"].text-xl');
+    await totalInput.fill("100");
+    await expect(peopleUl(page).locator("span", { hasText: /\d+ items?/ })).toHaveCount(0);
+  });
+
+  test("shows '1 item' (singular) for each person when one expense is added", async ({ page }) => {
+    await page.getByRole("button", { name: "Add expense" }).click();
+    await page.locator('li input[type="number"][placeholder="0.00"]').first().fill("100");
+    const personRows = page.locator("li", { has: page.getByPlaceholder("Name") });
+    await expect(personRows.nth(0)).toContainText("1 item");
+    await expect(personRows.nth(1)).toContainText("1 item");
+    await expect(personRows.nth(2)).toContainText("1 item");
+    await expect(personRows.nth(3)).toContainText("1 item");
+  });
+
+  test("uses plural 'items' when assigned to two or more expenses", async ({ page }) => {
+    await page.getByRole("button", { name: "Add expense" }).click();
+    await page.getByRole("button", { name: "Add expense" }).click();
+    const personRows = page.locator("li", { has: page.getByPlaceholder("Name") });
+    await expect(personRows.nth(0)).toContainText("2 items");
+    await expect(personRows.nth(1)).toContainText("2 items");
+    await expect(personRows.nth(2)).toContainText("2 items");
+    await expect(personRows.nth(3)).toContainText("2 items");
+  });
+
+  test("item count differs per person after selective deassignment", async ({ page }) => {
+    await page.getByRole("button", { name: "Add expense" }).click();
+    await page.getByRole("button", { name: "Add expense" }).click();
+    const personRows = page.locator("li", { has: page.getByPlaceholder("Name") });
+    // All 4 people assigned to both items by default
+    await expect(personRows.nth(0)).toContainText("2 items");
+
+    // Enter person mode for Rus via the avatar button
+    await page.getByRole("button", { name: "Assign expenses to this person" }).first().click();
+    // In person mode, expense rows become "Untitled" toggle-buttons (only visible in this mode)
+    // Click the first expense to deassign Rus from it
+    await page.getByRole("button", { name: /Untitled/i }).first().click();
+    // Exit person mode
+    await page.getByRole("button", { name: "Assign expenses to this person" }).first().click();
+
+    // Rus is now only in 1 item
+    await expect(personRows.nth(0)).toContainText("1 item");
+    // Others remain in 2 items
+    await expect(personRows.nth(1)).toContainText("2 items");
+    await expect(personRows.nth(2)).toContainText("2 items");
+    await expect(personRows.nth(3)).toContainText("2 items");
+  });
+
+  test("item count label hidden when person has no assigned items", async ({ page }) => {
+    await page.getByRole("button", { name: "Add expense" }).click();
+    // Remove all people from the only expense via Deselect All
+    await page.getByRole("button", { name: "Assign people to this expense" }).click();
+    await page.getByRole("button", { name: "Deselect All" }).click();
+    await page.getByRole("button", { name: "Assign people to this expense" }).click();
+    await expect(peopleUl(page).locator("span", { hasText: /\d+ items?/ })).toHaveCount(0);
+  });
+
+  test("item count disappears when the expense is removed", async ({ page }) => {
+    await page.getByRole("button", { name: "Add expense" }).click();
+    const personRows = page.locator("li", { has: page.getByPlaceholder("Name") });
+    await expect(personRows.nth(0)).toContainText("1 item");
+    await page.getByRole("button", { name: "Remove expense" }).click();
+    // After removal the items <ul> is gone; people <ul> is the only ul
+    await expect(peopleUl(page).locator("span", { hasText: /\d+ items?/ })).toHaveCount(0);
+  });
+
+  test("item count is not visible in settle mode", async ({ page }) => {
+    await page.getByRole("button", { name: "Add expense" }).click();
+    await page.locator('li input[type="number"][placeholder="0.00"]').first().fill("100");
+    // Settle mode hides the items <ul>; only the people <ul> remains
+    await page.getByRole("button", { name: "Settle" }).click();
+    await expect(peopleUl(page).locator("span", { hasText: /\d+ items?/ })).toHaveCount(0);
+  });
+});
