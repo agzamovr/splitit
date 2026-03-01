@@ -24,6 +24,7 @@ interface PersonCardProps {
   onUpdateName?: (name: string) => void;
   onUpdateAmount?: (amount: string) => void;
   onRemove?: () => void;
+  itemCount?: number;
 }
 
 export function PersonCard({
@@ -47,6 +48,7 @@ export function PersonCard({
   onUpdateName,
   onUpdateAmount,
   onRemove,
+  itemCount,
 }: PersonCardProps) {
   const sym = getCurrencySymbol(currency);
   const symTextClass = getCurrencySymbolClass(sym);
@@ -203,13 +205,20 @@ export function PersonCard({
               />
             </div>
           ) : (
-            <span className={`flex-shrink-0 text-base sm:text-sm font-semibold tabular-nums whitespace-nowrap ${
-              isActivePerson ? "text-sage" : "text-espresso/50"
-            }`}>
-              {computedAmount > 0
-                ? <><span className={`font-semibold ${symTextClass} ${isActivePerson ? "opacity-60" : "text-espresso/25"}`}>{sym}</span>&thinsp;{formatAmount(computedAmount, currency)}</>
-                : "—"}
-            </span>
+            <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
+              <span className={`text-base sm:text-sm font-semibold tabular-nums whitespace-nowrap ${
+                isActivePerson ? "text-sage" : "text-espresso/50"
+              }`}>
+                {computedAmount > 0
+                  ? <><span className={`font-semibold ${symTextClass} ${isActivePerson ? "opacity-60" : "text-espresso/25"}`}>{sym}</span>&thinsp;{formatAmount(computedAmount, currency)}</>
+                  : "—"}
+              </span>
+              {itemCount != null && itemCount > 0 && (
+                <span className="text-[10px] text-espresso/35 whitespace-nowrap leading-none">
+                  {itemCount} {itemCount === 1 ? "item" : "items"}
+                </span>
+              )}
+            </div>
           )}
 
           <button

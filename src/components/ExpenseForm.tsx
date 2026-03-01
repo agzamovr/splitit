@@ -357,6 +357,9 @@ export function ExpenseForm() {
                   store.inItemMode &&
                   store.assignmentMode!.type === "item" &&
                   (store.assignments[store.assignmentMode!.itemId] || []).includes(person.id);
+                const itemCount = store.expenses.filter(e =>
+                  (store.assignments[e.id] || []).includes(person.id)
+                ).length;
 
                 return (
                   <PersonCard
@@ -373,6 +376,7 @@ export function ExpenseForm() {
                     isAssignedInItemMode={isAssignedInItemMode}
                     isLastInput={lastPersonIsLast && index === store.people.length - 1}
                     focusNewId={store.focusNewId}
+                    itemCount={itemCount}
                     onToggleAssignment={() =>
                       store.assignmentMode?.type === "item" &&
                       store.toggleAssignment(store.assignmentMode.itemId, person.id)
