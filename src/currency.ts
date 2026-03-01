@@ -40,9 +40,12 @@ export function detectCurrency(): string {
 
 export async function detectCurrencyFromEdge(): Promise<string | null> {
   try {
-    const res = await fetch('/api/country');
-    const data = await res.json();
-    return REGION_CURRENCY[(data.country as string)?.toUpperCase() ?? ''] ?? null;
+    const res = await fetch('/cdn-cgi/trace');
+    if (!res.ok) return null;
+    const text = await res.text();
+    const match = text.match(/^loc=([A-Z]{2})$/m);
+    const country = match?.[1] ?? null;
+    return REGION_CURRENCY[country ?? ''] ?? null;
   } catch {
     return null;
   }
