@@ -7,9 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
+    "preview": "pnpm run build && wrangler dev",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "deploy": "pnpm run build && wrangler deploy"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.157.18",
@@ -33,6 +34,7 @@
     "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "wrangler": "^4.69.0"
   }
 }
