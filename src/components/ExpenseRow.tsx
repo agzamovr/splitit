@@ -11,7 +11,6 @@ interface ExpenseRowProps {
   isDimmedItem: boolean;
   isPersonModeRow: boolean;
   isAssignedInPersonMode: boolean;
-  isLastInput?: boolean;
   focusNewId: MutableRefObject<string | null>;
   onToggleAssignment: () => void;
   onItemFocus: () => void;

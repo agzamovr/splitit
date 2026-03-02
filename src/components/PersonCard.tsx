@@ -17,7 +17,6 @@ interface PersonCardProps {
   isDimmedPerson?: boolean;
   isItemModeRow?: boolean;
   isAssignedInItemMode?: boolean;
-  isLastInput?: boolean;
   focusNewId?: MutableRefObject<string | null>;
   onToggleAssignment?: () => void;
   onPersonFocus?: () => void;
@@ -25,6 +24,14 @@ interface PersonCardProps {
   onUpdateAmount?: (amount: string) => void;
   onRemove?: () => void;
   itemCount?: number;
+}
+
+function PersonAvatar({ name, className = "" }: { name: string; className?: string }) {
+  return (
+    <div className={`flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-sage-light to-sage flex items-center justify-center text-white font-semibold text-xs shadow-sm ${className}`}>
+      {name ? name[0].toUpperCase() : "?"}
+    </div>
+  );
 }
 
 function PersonCardAssignment({
@@ -50,9 +57,7 @@ function PersonCardAssignment({
           isAssignedInItemMode ? "bg-sage/8" : ""
         }`}
       >
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-sage-light to-sage flex items-center justify-center text-white font-semibold text-xs shadow-sm">
-          {person.name ? person.name[0].toUpperCase() : "?"}
-        </div>
+        <PersonAvatar name={person.name} />
         <span className="flex-1 text-left text-base sm:text-sm font-medium text-espresso truncate min-w-0 px-3 py-1.5 border border-transparent">
           {person.name || "Unnamed"}
         </span>
@@ -111,6 +116,7 @@ function PersonCardSettle({
     el.style.transform = '';
     const cleanup = () => { el.style.transition = ''; };
     el.addEventListener('transitionend', cleanup, { once: true });
+    return () => { el.removeEventListener('transitionend', cleanup); };
   }, [settleVariant, index]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
@@ -122,9 +128,7 @@ function PersonCardSettle({
       {settleVariant === "select" ? (
         <button type="button" onClick={onSelectPayer}
           className="w-full flex items-center gap-3 pl-4 pr-3 py-3.5 text-left transition-colors hover:bg-cream-dark/40 active:bg-cream-dark/60">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-sage-light to-sage flex items-center justify-center text-white font-semibold text-xs shadow-sm">
-            {person.name ? person.name[0].toUpperCase() : "?"}
-          </div>
+          <PersonAvatar name={person.name} />
           <span className="flex-1 text-base sm:text-sm font-medium text-espresso truncate min-w-0">
             {person.name || "Unnamed"}
           </span>
@@ -135,9 +139,7 @@ function PersonCardSettle({
       ) : settleVariant === "payer" ? (
         <button type="button" onClick={onSelectPayer}
           className="w-full flex items-center gap-3 pl-[14px] pr-3 py-3 text-left bg-sage/8 border-l-2 border-l-sage transition-colors hover:bg-sage/12 active:bg-sage/16">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-sage-light to-sage text-white flex items-center justify-center font-semibold text-xs shadow-sm ring-2 ring-sage/30">
-            {person.name ? person.name[0].toUpperCase() : "?"}
-          </div>
+          <PersonAvatar name={person.name} className="ring-2 ring-sage/30" />
           <span className="flex-1 text-base sm:text-sm font-medium text-espresso truncate min-w-0">
             {person.name || "Unnamed"}
           </span>
@@ -148,9 +150,7 @@ function PersonCardSettle({
       ) : (
         <button type="button" onClick={onToggleSettled}
           className="w-full flex items-center gap-3 pl-4 pr-3 py-3 text-left transition-colors hover:bg-cream-dark/40 active:bg-cream-dark/60">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-sage-light to-sage flex items-center justify-center text-white font-semibold text-xs shadow-sm opacity-70">
-            {person.name ? person.name[0].toUpperCase() : "?"}
-          </div>
+          <PersonAvatar name={person.name} className="opacity-70" />
           <span className="flex-1 text-base sm:text-sm font-medium text-espresso truncate min-w-0">
             {person.name || "Unnamed"}
           </span>

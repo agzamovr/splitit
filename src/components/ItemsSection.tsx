@@ -7,7 +7,6 @@ interface ItemsSectionProps {
   focusedExpenseId: string | null;
   setFocusedExpenseId: (id: string | null) => void;
   setShowCurrencySelector: (show: boolean) => void;
-  lastExpenseIsLast: boolean;
 }
 
 export function ItemsSection({
@@ -15,7 +14,6 @@ export function ItemsSection({
   focusedExpenseId,
   setFocusedExpenseId,
   setShowCurrencySelector,
-  lastExpenseIsLast,
 }: ItemsSectionProps) {
   const isPaymentMode = store.viewMode === "settle";
 
@@ -90,7 +88,6 @@ export function ItemsSection({
                 isDimmedItem={isDimmedItem}
                 isPersonModeRow={store.inPersonMode}
                 isAssignedInPersonMode={isAssignedInPersonMode}
-                isLastInput={lastExpenseIsLast && index === store.expenses.length - 1}
                 focusNewId={store.focusNewId}
                 onToggleAssignment={() =>
                   store.assignmentMode?.type === "person" &&

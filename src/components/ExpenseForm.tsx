@@ -49,11 +49,6 @@ export function ExpenseForm() {
   const payer = store.payerId ? store.people.find(p => p.id === store.payerId) ?? null : null;
   const payerName = payer?.name || "";
 
-  // Determine which component holds the last editable input
-  const hasEditablePersonInputs = store.people.length > 0;
-  const lastPersonIsLast = hasEditablePersonInputs;
-  const lastExpenseIsLast = !hasEditablePersonInputs && store.expenses.length > 0;
-
   return (
     <div
       ref={formRef}
@@ -79,7 +74,6 @@ export function ExpenseForm() {
         focusedExpenseId={focusedExpenseId}
         setFocusedExpenseId={setFocusedExpenseId}
         setShowCurrencySelector={setShowCurrencySelector}
-        lastExpenseIsLast={lastExpenseIsLast}
       />
 
       <PeopleSection
@@ -88,7 +82,6 @@ export function ExpenseForm() {
         setSettledDebtorIds={setSettledDebtorIds}
         settleSubMode={settleSubMode}
         handleSettleSubModeChange={handleSettleSubModeChange}
-        lastPersonIsLast={lastPersonIsLast}
       />
 
       {/* Summary */}

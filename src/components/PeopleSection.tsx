@@ -7,7 +7,6 @@ interface PeopleSectionProps {
   setSettledDebtorIds: React.Dispatch<React.SetStateAction<Set<string>>>;
   settleSubMode: "payer" | "own";
   handleSettleSubModeChange: (mode: "payer" | "own") => void;
-  lastPersonIsLast: boolean;
 }
 
 export function PeopleSection({
@@ -16,7 +15,6 @@ export function PeopleSection({
   setSettledDebtorIds,
   settleSubMode,
   handleSettleSubModeChange,
-  lastPersonIsLast,
 }: PeopleSectionProps) {
   const isPaymentMode = store.viewMode === "settle";
   const payer = store.payerId ? store.people.find(p => p.id === store.payerId) ?? null : null;
@@ -155,7 +153,6 @@ export function PeopleSection({
                   isDimmedPerson={isDimmedPerson}
                   isItemModeRow={store.inItemMode}
                   isAssignedInItemMode={isAssignedInItemMode}
-                  isLastInput={lastPersonIsLast && index === store.people.length - 1}
                   focusNewId={store.focusNewId}
                   itemCount={itemCount}
                   onToggleAssignment={() =>
