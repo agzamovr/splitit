@@ -1,6 +1,13 @@
-import { useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/router-devtools";
+
+const TanStackRouterDevtools = import.meta.env.PROD
+  ? () => null
+  : React.lazy(() =>
+      import("@tanstack/router-devtools").then((m) => ({
+        default: m.TanStackRouterDevtools,
+      }))
+    );
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -38,7 +45,9 @@ function RootLayout() {
       }}
     >
       <Outlet />
-      <TanStackRouterDevtools />
+      <Suspense fallback={null}>
+        <TanStackRouterDevtools />
+      </Suspense>
     </div>
   );
 }
