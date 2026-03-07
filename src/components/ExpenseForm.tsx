@@ -50,6 +50,21 @@ export function ExpenseForm() {
   }, []);
 
   const tg = window.Telegram?.WebApp ?? null;
+
+  // When a specific bill is opened from the bills list, show Telegram back button → /bills
+  useEffect(() => {
+    if (!tg) return;
+    const openedFromList = !!new URLSearchParams(window.location.search).get("billId");
+    if (!openedFromList) return;
+    tg.BackButton.show();
+    const goBack = () => void navigate({ to: "/bills" });
+    tg.BackButton.onClick(goBack);
+    return () => {
+      tg.BackButton.hide();
+      tg.BackButton.offClick(goBack);
+    };
+  }, []);
+
   const isPaymentMode = store.viewMode === "settle";
   const payer = store.payerId ? store.people.find(p => p.id === store.payerId) ?? null : null;
   const payerName = payer?.name || "";
@@ -185,8 +200,8 @@ export function ExpenseForm() {
         </div>
       )}
 
-      {/* My Bills link — Telegram only (requires initData to confirm we're inside the app) */}
-      {tg?.initData && !store.inAssignmentMode && (
+      {/* My Bills link */}
+      {!store.inAssignmentMode && (
         <div className="px-4 pb-2 flex justify-center">
           <button
             className="text-sm text-espresso/40 hover:text-espresso/60 transition-colors"

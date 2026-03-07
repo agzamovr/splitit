@@ -132,6 +132,14 @@ function BillsPage() {
         )}
         <h1 className="text-base font-semibold text-espresso tracking-tight flex-1">My Bills</h1>
 
+        {/* New Bill */}
+        <button
+          onClick={() => { window.location.href = "/"; }}
+          className="text-xs font-medium text-terracotta hover:text-terracotta/80 transition-colors"
+        >
+          + New
+        </button>
+
         {/* Filter toggle */}
         <div className="flex gap-1 bg-espresso/8 rounded-lg p-1 text-xs">
           <button

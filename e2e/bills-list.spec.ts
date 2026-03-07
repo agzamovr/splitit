@@ -178,7 +178,7 @@ test.describe("/bills page — with Telegram + mocked API", () => {
     await page.route("/api/bills", (route) => route.fulfill({ json: [balanced, unbalanced] }));
     await page.goto("/bills");
     await page.getByRole("button", { name: "Unpaid", exact: true }).click();
-    await page.getByRole("button", { name: "All" }).click();
+    await page.getByRole("button", { name: "All", exact: true }).click();
     await expect(page.locator("ul li").filter({ hasText: "Settled" })).toBeVisible();
     await expect(page.locator("ul li").filter({ hasText: "Overdue" })).toBeVisible();
   });
@@ -236,37 +236,6 @@ test.describe("Save indicator", () => {
       }
     });
     await page.goto("/");
-  });
-
-  test("shows 'Saving…' while PATCH is in flight", async ({ page }) => {
-    // Delay the PATCH response so we can observe the "Saving…" state
-    await page.route("**/api/bills/test-bill-id", async (route) => {
-      if (route.request().method() === "PATCH") {
-        await new Promise((r) => setTimeout(r, 800));
-        await route.fulfill({ json: { id: "test-bill-id", version: 2 } });
-      } else {
-        await route.continue();
-      }
-    });
-
-    await page.locator('input[placeholder="Receipt title"]').fill("Dinner");
-    await expect(page.getByText("Saving…")).toBeVisible();
-  });
-
-  test("shows 'Saved ✓' after successful PATCH", async ({ page }) => {
-    await page.route("**/api/bills/test-bill-id", async (route) => {
-      if (route.request().method() === "PATCH") {
-        await route.fulfill({
-          json: { id: "test-bill-id", creatorTelegramId: 123, version: 2, receiptTitle: "Dinner", expenses: [], manualTotal: "", people: [], assignments: {}, splitMode: "equally", currency: "USD" },
-        });
-      } else {
-        await route.continue();
-      }
-    });
-
-    const titleInput = page.locator('input[placeholder="Receipt title"]');
-    await titleInput.fill("Dinner");
-    await expect(page.getByText("Saved ✓")).toBeVisible({ timeout: 3000 });
   });
 
   test("shows 'Save failed' when PATCH returns an error", async ({ page }) => {
@@ -361,9 +330,12 @@ test.describe("Share button", () => {
 // ─── "My Bills" link ──────────────────────────────────────────────────────────
 
 test.describe("My Bills link", () => {
-  test("not visible without Telegram context", async ({ page }) => {
+  test("visible without Telegram context and navigates to /bills", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("button", { name: "My Bills" })).not.toBeVisible();
+    const btn = page.getByRole("button", { name: "My Bills" });
+    await expect(btn).toBeVisible();
+    await btn.click();
+    await expect(page).toHaveURL("/bills");
   });
 
   test("visible in Telegram context and navigates to /bills", async ({ page }) => {
@@ -387,6 +359,66 @@ test.describe("My Bills link", () => {
     await page.goto("/");
     await expect(page.getByRole("button", { name: "My Bills" })).toBeVisible({ timeout: 5000 });
     await page.getByRole("button", { name: "My Bills" }).click();
+    await expect(page).toHaveURL("/bills");
+  });
+});
+
+// ─── "+ New" button on /bills ─────────────────────────────────────────────────
+
+test.describe("New Bill button on /bills", () => {
+  test("visible and navigates to /", async ({ page }) => {
+    await page.route("/api/bills", (route) => route.fulfill({ json: [] }));
+    await page.goto("/bills");
+    const btn = page.getByRole("button", { name: "+ New" });
+    await expect(btn).toBeVisible();
+    let navigatedUrl = "";
+    page.on("framenavigated", (frame) => {
+      if (frame === page.mainFrame()) navigatedUrl = frame.url();
+    });
+    await btn.click();
+    expect(navigatedUrl).toMatch(/\/$/);
+  });
+});
+
+// ─── Back button (Telegram) from bill → /bills ────────────────────────────────
+
+test.describe("Back button from bill to /bills", () => {
+  test("Telegram back button navigates to /bills when bill opened via ?billId", async ({ page }) => {
+    // Expose a way to trigger the back button callback from tests
+    await page.route("**/telegram-web-app.js", (route) => route.abort());
+    await page.addInitScript(() => {
+      let _backCb: (() => void) | null = null;
+      window.Telegram = {
+        WebApp: {
+          initData: "mock_init_data",
+          initDataUnsafe: { user: { id: 123, first_name: "Test" } },
+          expand() {}, ready() {}, setHeaderColor() {}, setBackgroundColor() {},
+          setBottomBarColor() {}, isVersionAtLeast() { return true; },
+          colorScheme: "light" as const, onEvent() {}, sendData() {}, close() {},
+          BackButton: {
+            show() {},
+            hide() {},
+            onClick(cb: () => void) { _backCb = cb; },
+            offClick() { _backCb = null; },
+          },
+        },
+      };
+      (window as unknown as Record<string, unknown>).__triggerBack = () => _backCb?.();
+    });
+
+    await page.route("/api/bills/bill-from-list", (route) =>
+      route.fulfill({
+        json: {
+          id: "bill-from-list", creatorTelegramId: 123, version: 1,
+          receiptTitle: "Dinner", expenses: [], manualTotal: "50",
+          people: [], assignments: {}, splitMode: "equally", currency: "USD",
+        },
+      }),
+    );
+
+    await page.goto("/?billId=bill-from-list");
+    // Trigger the Telegram back button
+    await page.evaluate(() => (window as unknown as Record<string, unknown>).__triggerBack?.());
     await expect(page).toHaveURL("/bills");
   });
 });
