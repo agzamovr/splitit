@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { listBills, type Bill } from "@/api";
 import { formatAmount } from "@/currency";
 
@@ -62,12 +62,12 @@ function BillsPage() {
   const tg = window.Telegram?.WebApp ?? null;
 
   useEffect(() => {
-    if (!tg?.initData) {
+    if (!window.Telegram?.WebApp?.initData) {
       setBills([]);
       return;
     }
     listBills().then(setBills).catch(() => setBills([]));
-  }, [tg]);
+  }, []);
 
   useEffect(() => {
     if (!tg) return;
@@ -78,11 +78,17 @@ function BillsPage() {
       tg.BackButton.hide();
       tg.BackButton.offClick(goBack);
     };
-  }, [tg, navigate]);
+  }, [navigate]);
+
+  // Compute total and balance once per bill, not twice (filter + render)
+  const billStats = useMemo(
+    () => new Map((bills ?? []).map((b) => [b.id, { total: computeTotal(b), balanced: isBillBalanced(b) }])),
+    [bills],
+  );
 
   const displayed = bills
     ? filter === "unbalanced"
-      ? bills.filter((b) => !isBillBalanced(b))
+      ? bills.filter((b) => !billStats.get(b.id)!.balanced)
       : bills
     : [];
 
@@ -135,8 +141,7 @@ function BillsPage() {
       ) : (
         <ul className="divide-y divide-espresso/8">
           {displayed.map((bill) => {
-            const total = computeTotal(bill);
-            const balanced = isBillBalanced(bill);
+            const { total, balanced } = billStats.get(bill.id)!;
             return (
               <li key={bill.id}>
                 <button

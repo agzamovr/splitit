@@ -176,11 +176,7 @@ export function ExpenseForm() {
                   setTimeout(() => setShareStatus("idle"), 2000);
                 })
                 .catch((err: Error) => {
-                  if (err.message.includes("400") || err.message.toLowerCase().includes("chat")) {
-                    setShareStatus("no-chat");
-                  } else {
-                    setShareStatus("error");
-                  }
+                  setShareStatus(err.message.includes("400") ? "no-chat" : "error");
                 });
             }}
           >
