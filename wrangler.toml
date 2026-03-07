@@ -1,5 +1,8 @@
 name = "splitit"
 pages_build_output_dir = "dist"
+
+[vars]
+APP_URL = "https://splitit-b60.pages.dev"
 [[kv_namespaces]]
 binding = "SPLIT_BILLS"
 id = "99356a94cf1c4fbe841a69c106abaa7b"
