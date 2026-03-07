@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { onRequestGet, onRequestPatch } from "@functions/api/bills/[id]/index";
+import { onRequestGet, onRequestPatch, onRequestDelete } from "@functions/api/bills/[id]/index";
 import type { Env, Bill } from "@functions/lib/types";
 import { createMockKV, makeEnv, makeCtx } from "../../../helpers";
 
@@ -137,5 +137,69 @@ describe("PATCH /api/bills/:id", () => {
     expect(bill.id).toBe("bill123");
     expect(bill.creatorTelegramId).toBe(1);
     expect(bill.version).toBe(BASE_BILL.version + 1);
+  });
+});
+
+describe("DELETE /api/bills/:id", () => {
+  let mockKV: ReturnType<typeof createMockKV>;
+  let env: Env;
+
+  beforeEach(() => {
+    mockKV = createMockKV(BASE_BILL);
+    // Seed user index
+    mockKV.store.set("user:1:bills", JSON.stringify(["bill123"]));
+    env = makeEnv(mockKV.kv);
+    requireUserMock.mockResolvedValue({
+      ok: true,
+      initData: "valid",
+      user: { id: 1, first_name: "Alice" },
+    });
+  });
+
+  it("returns 401 without auth", async () => {
+    requireUserMock.mockResolvedValueOnce({
+      ok: false,
+      response: new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 }),
+    });
+    const ctx = makeCtx({ method: "DELETE", params: { id: "bill123" }, env, authHeader: "" });
+    const res = await onRequestDelete(ctx);
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 404 for unknown bill", async () => {
+    const ctx = makeCtx({ method: "DELETE", params: { id: "no-such" }, env });
+    const res = await onRequestDelete(ctx);
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 403 when non-creator tries to delete", async () => {
+    requireUserMock.mockResolvedValueOnce({ ok: true, initData: "valid", user: { id: 999, first_name: "Eve" } });
+    const ctx = makeCtx({ method: "DELETE", params: { id: "bill123" }, env });
+    const res = await onRequestDelete(ctx);
+    expect(res.status).toBe(403);
+    // Bill should still exist
+    expect(mockKV.store.has("bill:bill123")).toBe(true);
+  });
+
+  it("deletes the bill from KV", async () => {
+    const ctx = makeCtx({ method: "DELETE", params: { id: "bill123" }, env });
+    const res = await onRequestDelete(ctx);
+    expect(res.status).toBe(200);
+    expect(mockKV.store.has("bill:bill123")).toBe(false);
+  });
+
+  it("removes bill from user index", async () => {
+    const ctx = makeCtx({ method: "DELETE", params: { id: "bill123" }, env });
+    await onRequestDelete(ctx);
+    const ids = JSON.parse(mockKV.store.get("user:1:bills")!) as string[];
+    expect(ids).not.toContain("bill123");
+  });
+
+  it("removes only the deleted bill from a multi-bill index", async () => {
+    mockKV.store.set("user:1:bills", JSON.stringify(["other-bill", "bill123"]));
+    const ctx = makeCtx({ method: "DELETE", params: { id: "bill123" }, env });
+    await onRequestDelete(ctx);
+    const ids = JSON.parse(mockKV.store.get("user:1:bills")!) as string[];
+    expect(ids).toEqual(["other-bill"]);
   });
 });

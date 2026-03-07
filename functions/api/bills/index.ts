@@ -1,6 +1,6 @@
 import type { Bill, Env } from "../../lib/types";
 import { requireUser } from "../../lib/auth";
-import { billKey, putBill, addBillToUserIndex, getUserBillIds } from "../../lib/kv";
+import { billKey, putBill, addBillToUserIndex, getUserBillIds, clearUserBillIndex } from "../../lib/kv";
 
 function nanoid(size = 10): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -54,4 +54,17 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   return new Response(JSON.stringify(bills), {
     headers: { "Content-Type": "application/json" },
   });
+};
+
+export const onRequestDelete: PagesFunction<Env> = async (context) => {
+  const auth = await requireUser(context);
+  if (!auth.ok) return auth.response;
+
+  const ids = await getUserBillIds(context.env.SPLIT_BILLS, auth.user.id);
+  await Promise.all([
+    ...ids.map((id) => context.env.SPLIT_BILLS.delete(billKey(id))),
+    clearUserBillIndex(context.env.SPLIT_BILLS, auth.user.id),
+  ]);
+
+  return new Response("{}", { headers: { "Content-Type": "application/json" } });
 };

@@ -1,6 +1,6 @@
 import type { Bill, Env } from "../../../lib/types";
 import { requireUser } from "../../../lib/auth";
-import { billKey, putBill } from "../../../lib/kv";
+import { billKey, putBill, removeBillFromUserIndex } from "../../../lib/kv";
 
 const CREATOR_ONLY_FIELDS = new Set([
   "expenses",
@@ -58,4 +58,36 @@ export const onRequestPatch: PagesFunction<Env> = async (context) => {
   return new Response(JSON.stringify(bill), {
     headers: { "Content-Type": "application/json" },
   });
+};
+
+export const onRequestDelete: PagesFunction<Env> = async (context) => {
+  const id = context.params.id as string;
+
+  const [auth, raw] = await Promise.all([
+    requireUser(context),
+    context.env.SPLIT_BILLS.get(billKey(id)),
+  ]);
+
+  if (!auth.ok) return auth.response;
+  if (!raw) {
+    return new Response(JSON.stringify({ error: "Not found" }), {
+      status: 404,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const bill: Bill = JSON.parse(raw) as Bill;
+  if (bill.creatorTelegramId !== auth.user.id) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  await Promise.all([
+    context.env.SPLIT_BILLS.delete(billKey(id)),
+    removeBillFromUserIndex(context.env.SPLIT_BILLS, auth.user.id, id),
+  ]);
+
+  return new Response("{}", { headers: { "Content-Type": "application/json" } });
 };

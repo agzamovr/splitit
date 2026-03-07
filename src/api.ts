@@ -64,3 +64,11 @@ export function shareBill(id: string, chatId?: number): Promise<void> {
 export function listBills(): Promise<Bill[]> {
   return apiFetch("/api/bills");
 }
+
+export function deleteBill(id: string): Promise<void> {
+  return apiFetch(`/api/bills/${id}`, { method: "DELETE" });
+}
+
+export function deleteAllBills(): Promise<void> {
+  return apiFetch("/api/bills", { method: "DELETE" });
+}

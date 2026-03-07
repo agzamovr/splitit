@@ -11,6 +11,10 @@ export function createMockKV(initial?: Bill) {
         store.set(key, value);
         return Promise.resolve(undefined);
       }),
+      delete: vi.fn((key: string) => {
+        store.delete(key);
+        return Promise.resolve(undefined);
+      }),
     } as unknown as KVNamespace,
     store,
   };

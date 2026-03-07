@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { onRequestPost, onRequestGet } from "@functions/api/bills/index";
+import { onRequestPost, onRequestGet, onRequestDelete } from "@functions/api/bills/index";
 import type { Env, Bill } from "@functions/lib/types";
 import { createMockKV, makeEnv, makeCtx } from "../../helpers";
+
+const makeBill = (id: string): Bill => ({
+  id, creatorTelegramId: 1, createdAt: 1000, receiptTitle: id,
+  expenses: [], manualTotal: "0", people: [], assignments: {},
+  splitMode: "equally", currency: "USD", version: 1,
+});
 
 vi.mock("@functions/lib/auth", () => ({
   requireUser: vi.fn().mockResolvedValue({
@@ -116,11 +122,6 @@ describe("GET /api/bills", () => {
 
   it("returns multiple bills in index order", async () => {
     const mockKV = createMockKV();
-    const makeBill = (id: string): Bill => ({
-      id, creatorTelegramId: 1, createdAt: 1000, receiptTitle: id,
-      expenses: [], manualTotal: "0", people: [], assignments: {},
-      splitMode: "equally", currency: "USD", version: 1,
-    });
     mockKV.store.set("bill:b1", JSON.stringify(makeBill("b1")));
     mockKV.store.set("bill:b2", JSON.stringify(makeBill("b2")));
     mockKV.store.set("user:1:bills", JSON.stringify(["b2", "b1"]));
@@ -193,5 +194,41 @@ describe("POST /api/bills — user index", () => {
     expect(ids).toHaveLength(100);
     // oldest entry dropped
     expect(ids).not.toContain("old-99");
+  });
+});
+
+describe("DELETE /api/bills", () => {
+  it("returns 401 without auth", async () => {
+    const { requireUser } = await import("@functions/lib/auth");
+    vi.mocked(requireUser).mockResolvedValueOnce({
+      ok: false,
+      response: new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 }),
+    });
+    const { kv } = createMockKV();
+    const ctx = makeCtx({ method: "DELETE", env: makeEnv(kv), authHeader: "" });
+    const res = await onRequestDelete(ctx);
+    expect(res.status).toBe(401);
+  });
+
+  it("deletes all user bills from KV and clears the index", async () => {
+    const mockKV = createMockKV();
+    mockKV.store.set("bill:b1", JSON.stringify(makeBill("b1")));
+    mockKV.store.set("bill:b2", JSON.stringify(makeBill("b2")));
+    mockKV.store.set("user:1:bills", JSON.stringify(["b1", "b2"]));
+
+    const ctx = makeCtx({ method: "DELETE", env: makeEnv(mockKV.kv) });
+    const res = await onRequestDelete(ctx);
+
+    expect(res.status).toBe(200);
+    expect(mockKV.store.has("bill:b1")).toBe(false);
+    expect(mockKV.store.has("bill:b2")).toBe(false);
+    expect(mockKV.store.has("user:1:bills")).toBe(false);
+  });
+
+  it("succeeds when user has no bills", async () => {
+    const { kv } = createMockKV();
+    const ctx = makeCtx({ method: "DELETE", env: makeEnv(kv) });
+    const res = await onRequestDelete(ctx);
+    expect(res.status).toBe(200);
   });
 });

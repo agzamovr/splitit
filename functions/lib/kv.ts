@@ -20,3 +20,14 @@ export async function getUserBillIds(kv: Env["SPLIT_BILLS"], telegramId: number)
   const raw = await kv.get(userBillsKey(telegramId));
   return raw ? (JSON.parse(raw) as string[]) : [];
 }
+
+export async function removeBillFromUserIndex(kv: Env["SPLIT_BILLS"], telegramId: number, billId: string): Promise<void> {
+  const raw = await kv.get(userBillsKey(telegramId));
+  if (!raw) return;
+  const ids = (JSON.parse(raw) as string[]).filter((id) => id !== billId);
+  await kv.put(userBillsKey(telegramId), JSON.stringify(ids));
+}
+
+export function clearUserBillIndex(kv: Env["SPLIT_BILLS"], telegramId: number): Promise<void> {
+  return kv.delete(userBillsKey(telegramId));
+}
