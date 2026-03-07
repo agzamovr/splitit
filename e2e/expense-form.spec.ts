@@ -988,3 +988,40 @@ test.describe("Item count per person", () => {
     await expect(peopleUl(page).locator("span", { hasText: /\d+ items?/ })).toHaveCount(0);
   });
 });
+
+test.describe("Receipt title", () => {
+  test("shows a title input with a default value on load", async ({ page }) => {
+    const titleInput = page.getByPlaceholder("Receipt title");
+    await expect(titleInput).toBeVisible();
+    const value = await titleInput.inputValue();
+    // Default is "<Meal> · <Month> <Day>", e.g. "Dinner · Mar 7"
+    expect(value).toMatch(/^(Breakfast|Brunch|Lunch|Dinner) · \w+ \d+$/);
+  });
+
+  test("default title contains the correct date", async ({ page }) => {
+    const titleInput = page.getByPlaceholder("Receipt title");
+    const value = await titleInput.inputValue();
+    // Extract the date portion after " · "
+    const datePart = value.split(" · ")[1]; // e.g. "Mar 7"
+    const now = new Date();
+    const expectedMonth = now.toLocaleString("en-US", { month: "short" });
+    const expectedDay = String(now.getDate());
+    expect(datePart).toBe(`${expectedMonth} ${expectedDay}`);
+  });
+
+  test("title is editable", async ({ page }) => {
+    const titleInput = page.getByPlaceholder("Receipt title");
+    await titleInput.fill("Team Lunch");
+    await expect(titleInput).toHaveValue("Team Lunch");
+  });
+
+  test("title persists independently of other interactions", async ({ page }) => {
+    const titleInput = page.getByPlaceholder("Receipt title");
+    await titleInput.fill("Friday Dinner");
+
+    // Interact with the form (add a total)
+    await page.locator('input[type="number"].text-xl').fill("80");
+
+    await expect(titleInput).toHaveValue("Friday Dinner");
+  });
+});

@@ -10,7 +10,20 @@ import {
 } from "./types";
 import { detectCurrency, detectCurrencyFromEdge } from "./currency";
 
+function getDefaultReceiptTitle(date: Date): string {
+  const hour = date.getHours();
+  let meal: string;
+  if (hour >= 5 && hour <= 9) meal = "Breakfast";
+  else if (hour >= 10 && hour <= 11) meal = "Brunch";
+  else if (hour >= 12 && hour <= 13) meal = "Lunch";
+  else meal = "Dinner";
+  const month = date.toLocaleString("en-US", { month: "short" });
+  const day = date.getDate();
+  return `${meal} · ${month} ${day}`;
+}
+
 export function useExpenseStore() {
+  const [receiptTitle, setReceiptTitle] = useState(() => getDefaultReceiptTitle(new Date()));
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [manualTotal, setManualTotal] = useState("");
   const [people, setPeople] = useState<Person[]>(SAMPLE_PEOPLE);
@@ -264,6 +277,8 @@ export function useExpenseStore() {
 
   return {
     // State
+    receiptTitle,
+    setReceiptTitle,
     expenses,
     manualTotal,
     people,

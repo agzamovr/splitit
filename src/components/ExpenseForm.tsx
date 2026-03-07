@@ -69,6 +69,17 @@ export function ExpenseForm() {
         </header>
       )}
 
+      {/* Receipt title */}
+      <div className="px-4 py-3 border-b border-espresso/8">
+        <input
+          type="text"
+          value={store.receiptTitle}
+          onChange={(e) => store.setReceiptTitle(e.target.value)}
+          placeholder="Receipt title"
+          className="w-full bg-transparent text-base font-semibold text-espresso tracking-tight outline-none placeholder:text-espresso/30 focus:placeholder:text-espresso/20"
+        />
+      </div>
+
       <ItemsSection
         store={store}
         focusedExpenseId={focusedExpenseId}
