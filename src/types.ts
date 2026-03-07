@@ -14,6 +14,7 @@ export interface Person {
   amount: string;
   paid: string;
   telegramId?: number;
+  photoUrl?: string;
 }
 
 export type AssignmentMode =

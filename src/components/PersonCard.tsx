@@ -1,4 +1,4 @@
-import { type MutableRefObject, useLayoutEffect, useRef } from "react";
+import { type MutableRefObject, useLayoutEffect, useRef, useState } from "react";
 import { type Person } from "../types";
 import { formatAmount, getCurrencySymbol, getCurrencySymbolClass } from "../currency";
 
@@ -26,7 +26,18 @@ interface PersonCardProps {
   itemCount?: number;
 }
 
-function PersonAvatar({ name, className = "" }: { name: string; className?: string }) {
+function PersonAvatar({ name, photoUrl, className = "" }: { name: string; photoUrl?: string; className?: string }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  if (photoUrl && !imgFailed) {
+    return (
+      <img
+        src={photoUrl}
+        onError={() => setImgFailed(true)}
+        alt={name}
+        className={`flex-shrink-0 w-8 h-8 rounded-full object-cover shadow-sm ${className}`}
+      />
+    );
+  }
   return (
     <div className={`flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-sage-light to-sage flex items-center justify-center text-white font-semibold text-xs shadow-sm ${className}`}>
       {name ? name[0].toUpperCase() : "?"}
@@ -47,8 +58,7 @@ function PersonCardAssignment({
   const symTextClass = getCurrencySymbolClass(sym);
   return (
     <li
-      className={`animate-slide-up ${isDimmedPerson ? "opacity-30" : ""} transition-opacity`}
-      style={{ animationDelay: `${index * 50}ms` }}
+      className={`${isDimmedPerson ? "opacity-30" : ""} transition-opacity`}
     >
       <button
         type="button"
@@ -57,7 +67,7 @@ function PersonCardAssignment({
           isAssignedInItemMode ? "bg-sage/8" : ""
         }`}
       >
-        <PersonAvatar name={person.name} />
+        <PersonAvatar name={person.name} photoUrl={person.photoUrl} />
         <span className="flex-1 text-left text-base sm:text-sm font-medium text-espresso truncate min-w-0 px-3 py-1.5 border border-transparent">
           {person.name || "Unnamed"}
         </span>
@@ -128,7 +138,7 @@ function PersonCardSettle({
       {settleVariant === "select" ? (
         <button type="button" onClick={onSelectPayer}
           className="w-full flex items-center gap-3 pl-4 pr-3 py-3.5 text-left transition-colors hover:bg-cream-dark/40 active:bg-cream-dark/60">
-          <PersonAvatar name={person.name} />
+          <PersonAvatar name={person.name} photoUrl={person.photoUrl} />
           <span className="flex-1 text-base sm:text-sm font-medium text-espresso truncate min-w-0">
             {person.name || "Unnamed"}
           </span>
@@ -139,7 +149,7 @@ function PersonCardSettle({
       ) : settleVariant === "payer" ? (
         <button type="button" onClick={onSelectPayer}
           className="w-full flex items-center gap-3 pl-[14px] pr-3 py-3 text-left bg-sage/8 border-l-2 border-l-sage transition-colors hover:bg-sage/12 active:bg-sage/16">
-          <PersonAvatar name={person.name} className="ring-2 ring-sage/30" />
+          <PersonAvatar name={person.name} photoUrl={person.photoUrl} className="ring-2 ring-sage/30" />
           <span className="flex-1 text-base sm:text-sm font-medium text-espresso truncate min-w-0">
             {person.name || "Unnamed"}
           </span>
@@ -150,7 +160,7 @@ function PersonCardSettle({
       ) : (
         <button type="button" onClick={onToggleSettled}
           className="w-full flex items-center gap-3 pl-4 pr-3 py-3 text-left transition-colors hover:bg-cream-dark/40 active:bg-cream-dark/60">
-          <PersonAvatar name={person.name} className="opacity-70" />
+          <PersonAvatar name={person.name} photoUrl={person.photoUrl} className="opacity-70" />
           <span className="flex-1 text-base sm:text-sm font-medium text-espresso truncate min-w-0">
             {person.name || "Unnamed"}
           </span>
@@ -183,6 +193,15 @@ function PersonCardConsumptionEdit({
   const symTextClass = getCurrencySymbolClass(sym);
   const inputPl = sym.length <= 1 ? 'pl-6' : sym.length <= 2 ? 'pl-8' : 'pl-10';
   const amountChars = Math.max(5, displayedAmount?.length || 4) + sym.length + 2;
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  useLayoutEffect(() => {
+    if (focusNewId?.current === person.id && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      focusNewId.current = null;
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <li
@@ -197,20 +216,16 @@ function PersonCardConsumptionEdit({
         <button
           type="button"
           onClick={onPersonFocus}
-          className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-sage-light to-sage flex items-center justify-center text-white font-semibold text-xs shadow-sm hover:ring-2 hover:ring-sage/50 transition-all cursor-pointer"
+          className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-sage-light to-sage flex items-center justify-center text-white font-semibold text-xs shadow-sm hover:ring-2 hover:ring-sage/50 transition-all cursor-pointer overflow-hidden"
           aria-label="Assign expenses to this person"
         >
-          {person.name ? person.name[0].toUpperCase() : "?"}
+          {person.photoUrl && !avatarFailed
+            ? <img src={person.photoUrl} onError={() => setAvatarFailed(true)} className="w-full h-full object-cover" alt={person.name} />
+            : (person.name ? person.name[0].toUpperCase() : "?")}
         </button>
 
         <input
-          ref={(el) => {
-            if (el && focusNewId?.current === person.id) {
-              el.focus();
-              el.scrollIntoView({ behavior: "smooth", block: "center" });
-              focusNewId.current = null;
-            }
-          }}
+          ref={inputRef}
           type="text"
           enterKeyHint="go"
           value={person.name}

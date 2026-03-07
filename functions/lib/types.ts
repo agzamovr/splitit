@@ -11,6 +11,7 @@ export interface Person {
   amount: string;
   paid: string;
   telegramId?: number;
+  photoUrl?: string;
 }
 
 export interface Bill {

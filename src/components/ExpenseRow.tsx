@@ -1,4 +1,4 @@
-import { type MutableRefObject } from "react";
+import { type MutableRefObject, useLayoutEffect, useRef } from "react";
 import { type Expense } from "../types";
 import { formatAmount, getCurrencySymbol } from "../currency";
 
@@ -43,6 +43,14 @@ export function ExpenseRow({
   const pricingMode = expense.pricingMode;
   const modeLabel = pricingMode === "each" ? "ea" : "tot";
   const priceChars = Math.max(5, expense.price?.length || 4) + 4;
+  const descInputRef = useRef<HTMLInputElement>(null);
+  useLayoutEffect(() => {
+    if (focusNewId.current === expense.id && descInputRef.current) {
+      descInputRef.current.focus();
+      descInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      focusNewId.current = null;
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const PeopleIcon = () => (
     <span className="relative">
@@ -123,13 +131,7 @@ export function ExpenseRow({
 
           <div className="flex-1 min-w-0 flex flex-wrap items-start gap-x-3 gap-y-1.5">
             <input
-              ref={(el) => {
-                if (el && focusNewId.current === expense.id) {
-                  el.focus();
-                  el.scrollIntoView({ behavior: "smooth", block: "center" });
-                  focusNewId.current = null;
-                }
-              }}
+              ref={descInputRef}
               type="text"
               enterKeyHint="go"
               value={expense.description}

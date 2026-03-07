@@ -196,15 +196,16 @@ export function useExpenseStore() {
 
   const addPerson = () => {
     const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-    const name = tgUser
-      ? [tgUser.first_name, tgUser.last_name].filter(Boolean).join(" ")
+    const alreadyAdded = tgUser ? people.some(p => p.telegramId === tgUser.id) : true;
+    const name = !alreadyAdded
+      ? [tgUser!.first_name, tgUser!.last_name].filter(Boolean).join(" ")
       : "";
     const newPerson: Person = {
       id: genId(),
       name,
       amount: "",
       paid: "",
-      ...(tgUser ? { telegramId: tgUser.id } : {}),
+      ...(tgUser ? { telegramId: tgUser.id, photoUrl: tgUser.photo_url } : {}),
     };
     focusNewId.current = newPerson.id;
     setPeople((prev) => [...prev, newPerson]);
