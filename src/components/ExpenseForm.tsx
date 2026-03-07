@@ -111,21 +111,17 @@ export function ExpenseForm() {
       )}
 
       {/* Receipt title */}
-      <div className="px-4 py-3 border-b border-espresso/8">
+      <div className="px-4 py-3 border-b border-espresso/8 flex items-center gap-2">
         <input
           type="text"
           value={store.receiptTitle}
           onChange={(e) => store.setReceiptTitle(e.target.value)}
           placeholder="Receipt title"
-          className="w-full bg-transparent text-base font-semibold text-espresso tracking-tight outline-none placeholder:text-espresso/30 focus:placeholder:text-espresso/20"
+          className="flex-1 bg-transparent text-base font-semibold text-espresso tracking-tight outline-none placeholder:text-espresso/30 focus:placeholder:text-espresso/20"
         />
-        <p className={`mt-1 text-xs h-4 ${
-          saveStatus === "saving" ? "text-espresso/40" :
-          saveStatus === "saved" ? "text-espresso/50" :
-          saveStatus === "error" ? "text-red-400" : ""
-        }`}>
-          {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved ✓" : saveStatus === "error" ? "Save failed" : ""}
-        </p>
+        {saveStatus === "error" && (
+          <span className="text-xs text-red-400 shrink-0">Save failed</span>
+        )}
       </div>
 
       <ItemsSection
