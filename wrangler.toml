@@ -3,5 +3,5 @@ pages_build_output_dir = "dist"
 
 [[kv_namespaces]]
 binding = "SPLIT_BILLS"
-id = "<kv-namespace-id>"
-preview_id = "<kv-namespace-preview-id>"
+id = "99356a94cf1c4fbe841a69c106abaa7b"
+preview_id = "ce470fa5b5494f768e470651a876b4cf"
