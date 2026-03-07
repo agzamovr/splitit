@@ -9,12 +9,13 @@ import { CurrencySelector } from "./CurrencySelector";
 
 export function ExpenseForm() {
   const store = useExpenseStore();
-  const { billId, loading, error, isCreator } = useBillSync({
+  const { billId, loading, error, isCreator, saveStatus } = useBillSync({
     store,
     onBillLoaded: store.loadBill,
   });
   const formRef = useRef<HTMLDivElement>(null);
   const [showCurrencySelector, setShowCurrencySelector] = useState(false);
+  const [shareStatus, setShareStatus] = useState<"idle" | "sending" | "sent" | "error" | "no-chat">("idle");
   const [settledDebtorIds, setSettledDebtorIds] = useState<Set<string>>(new Set());
   const [focusedExpenseId, setFocusedExpenseId] = useState<string | null>(null);
   const [settleSubMode, setSettleSubMode] = useState<"payer" | "own">("payer");
@@ -116,6 +117,15 @@ export function ExpenseForm() {
           placeholder="Receipt title"
           className="w-full bg-transparent text-base font-semibold text-espresso tracking-tight outline-none placeholder:text-espresso/30 focus:placeholder:text-espresso/20"
         />
+        {saveStatus !== "idle" && (
+          <p className={`mt-1 text-xs transition-opacity ${
+            saveStatus === "saving" ? "text-espresso/40" :
+            saveStatus === "saved" ? "text-espresso/50" :
+            "text-red-400"
+          }`}>
+            {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved ✓" : "Save failed"}
+          </p>
+        )}
       </div>
 
       <ItemsSection
@@ -153,14 +163,33 @@ export function ExpenseForm() {
       {tg && billId && isCreator && !store.inAssignmentMode && (
         <div className="px-4 pt-2 pb-4">
           <button
-            className="w-full py-3 rounded-xl bg-terracotta text-white font-semibold text-sm"
+            disabled={shareStatus === "sending"}
+            className="w-full py-3 rounded-xl bg-terracotta text-white font-semibold text-sm disabled:opacity-60"
             onClick={() => {
               const chatId = tg?.initDataUnsafe?.chat?.id;
-              shareBill(billId, chatId).catch(() => {});
+              setShareStatus("sending");
+              shareBill(billId, chatId)
+                .then(() => {
+                  setShareStatus("sent");
+                  setTimeout(() => setShareStatus("idle"), 2000);
+                })
+                .catch((err: Error) => {
+                  if (err.message.includes("400") || err.message.toLowerCase().includes("chat")) {
+                    setShareStatus("no-chat");
+                  } else {
+                    setShareStatus("error");
+                  }
+                });
             }}
           >
-            Share with Group
+            {shareStatus === "sending" ? "Sharing…" : shareStatus === "sent" ? "Shared!" : "Share with Group"}
           </button>
+          {shareStatus === "no-chat" && (
+            <p className="mt-2 text-xs text-center text-espresso/50">Open from a group chat to share</p>
+          )}
+          {shareStatus === "error" && (
+            <p className="mt-2 text-xs text-center text-red-400">Failed to share</p>
+          )}
         </div>
       )}
 

@@ -26,6 +26,8 @@ export function useBillSync({ store, onBillLoaded }: UseBillSyncOptions) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCreator, setIsCreator] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const versionRef = useRef(0);
   const loadedFromServerRef = useRef(false);
@@ -109,6 +111,7 @@ export function useBillSync({ store, onBillLoaded }: UseBillSyncOptions) {
       mounted = false;
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -131,14 +134,18 @@ export function useBillSync({ store, onBillLoaded }: UseBillSyncOptions) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       if (!billIdRef.current) return;
+      setSaveStatus("saving");
       try {
         const bill = await patchBill(billIdRef.current, storeSnapshot(storeRef.current));
         versionRef.current = bill.version;
+        setSaveStatus("saved");
+        if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current);
+        saveStatusTimerRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
       } catch {
-        // ignore transient write errors
+        setSaveStatus("error");
       }
     }, 500);
   }, [snapshotKey, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { billId, loading, error, isCreator };
+  return { billId, loading, error, isCreator, saveStatus };
 }
