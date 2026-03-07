@@ -191,8 +191,8 @@ export function ExpenseForm() {
         </div>
       )}
 
-      {/* My Bills link — Telegram only */}
-      {tg && !store.inAssignmentMode && (
+      {/* My Bills link — Telegram only (requires initData to confirm we're inside the app) */}
+      {tg?.initData && !store.inAssignmentMode && (
         <div className="px-4 pb-2 flex justify-center">
           <button
             className="text-sm text-espresso/40 hover:text-espresso/60 transition-colors"

@@ -96,7 +96,7 @@ function BillsPage() {
     <div className="min-h-screen bg-cream">
       {/* Header */}
       <div className="px-4 pt-4 pb-3 border-b border-espresso/8 flex items-center justify-between">
-        {!tg && (
+        {!tg?.initData && (
           <button
             onClick={() => void navigate({ to: "/" })}
             className="text-sm text-espresso/50 hover:text-espresso mr-3"
