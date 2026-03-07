@@ -119,14 +119,8 @@ export function ExpenseForm() {
           placeholder="Receipt title"
           className="w-full bg-transparent text-base font-semibold text-espresso tracking-tight outline-none placeholder:text-espresso/30 focus:placeholder:text-espresso/20"
         />
-        {saveStatus !== "idle" && (
-          <p className={`mt-1 text-xs transition-opacity ${
-            saveStatus === "saving" ? "text-espresso/40" :
-            saveStatus === "saved" ? "text-espresso/50" :
-            "text-red-400"
-          }`}>
-            {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved ✓" : "Save failed"}
-          </p>
+        {saveStatus === "error" && (
+          <p className="mt-1 text-xs text-red-400">Save failed</p>
         )}
       </div>
 
