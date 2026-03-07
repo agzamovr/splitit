@@ -13,6 +13,7 @@ export interface Person {
   name: string;
   amount: string;
   paid: string;
+  telegramId?: number;
 }
 
 export type AssignmentMode =

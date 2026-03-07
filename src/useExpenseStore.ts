@@ -9,6 +9,7 @@ import {
   genId,
 } from "./types";
 import { detectCurrency, detectCurrencyFromEdge } from "./currency";
+import type { BillPayload } from "./api";
 
 function getDefaultReceiptTitle(date: Date): string {
   const hour = date.getHours();
@@ -26,7 +27,9 @@ export function useExpenseStore() {
   const [receiptTitle, setReceiptTitle] = useState(() => getDefaultReceiptTitle(new Date()));
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [manualTotal, setManualTotal] = useState("");
-  const [people, setPeople] = useState<Person[]>(SAMPLE_PEOPLE);
+  const [people, setPeople] = useState<Person[]>(
+    window.Telegram?.WebApp?.initData ? [] : SAMPLE_PEOPLE,
+  );
   const [splitMode, setSplitMode] = useState<"equally" | "amounts">("equally");
   const focusNewId = useRef<string | null>(null);
 
@@ -192,7 +195,17 @@ export function useExpenseStore() {
   };
 
   const addPerson = () => {
-    const newPerson: Person = { id: genId(), name: "", amount: "", paid: "" };
+    const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+    const name = tgUser
+      ? [tgUser.first_name, tgUser.last_name].filter(Boolean).join(" ")
+      : "";
+    const newPerson: Person = {
+      id: genId(),
+      name,
+      amount: "",
+      paid: "",
+      ...(tgUser ? { telegramId: tgUser.id } : {}),
+    };
     focusNewId.current = newPerson.id;
     setPeople((prev) => [...prev, newPerson]);
     setAssignments((prev) => {
@@ -261,6 +274,19 @@ export function useExpenseStore() {
     }));
   };
 
+  const loadBill = (bill: BillPayload) => {
+    setReceiptTitle(bill.receiptTitle);
+    setExpenses(bill.expenses);
+    setManualTotal(bill.manualTotal);
+    setPeople(bill.people);
+    setSplitMode(bill.splitMode);
+    setCurrency(bill.currency);
+    setAssignments(bill.assignments);
+    setAssignmentMode(null);
+    setViewModeState("consumption");
+    setPayerIdState(null);
+  };
+
   const handleSetSplitMode = (mode: "equally" | "amounts") => {
     if (mode === "amounts" && splitMode === "equally") {
       setPeople((prev) =>
@@ -326,5 +352,6 @@ export function useExpenseStore() {
     updatePersonPaid,
     selectAllItems,
     selectAllPeople,
+    loadBill,
   };
 }

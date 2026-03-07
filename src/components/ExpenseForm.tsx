@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useExpenseStore } from "../useExpenseStore";
+import { useBillSync } from "../useBillSync";
+import { shareBill } from "../api";
 import { ItemsSection } from "./ItemsSection";
 import { PeopleSection } from "./PeopleSection";
 import { SummarySection } from "./SummarySection";
@@ -7,6 +9,10 @@ import { CurrencySelector } from "./CurrencySelector";
 
 export function ExpenseForm() {
   const store = useExpenseStore();
+  const { billId, loading, error, isCreator } = useBillSync({
+    store,
+    onBillLoaded: store.loadBill,
+  });
   const formRef = useRef<HTMLDivElement>(null);
   const [showCurrencySelector, setShowCurrencySelector] = useState(false);
   const [settledDebtorIds, setSettledDebtorIds] = useState<Set<string>>(new Set());
@@ -40,6 +46,7 @@ export function ExpenseForm() {
     }
   }, []);
 
+  const tg = window.Telegram?.WebApp ?? null;
   const isPaymentMode = store.viewMode === "settle";
   const payer = store.payerId ? store.people.find(p => p.id === store.payerId) ?? null : null;
   const payerName = payer?.name || "";
@@ -64,6 +71,22 @@ export function ExpenseForm() {
       ? store.people.every(p => settledDebtorIds.has(p.id))
       : !!store.payerId && store.people.filter(p => p.id !== store.payerId).every(p => settledDebtorIds.has(p.id));
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center">
+        <p className="text-espresso/60 text-sm">Loading bill…</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center px-6">
+        <p className="text-red-500 text-sm text-center">{error}</p>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={formRef}
@@ -76,7 +99,7 @@ export function ExpenseForm() {
       }}
     >
       {/* Header – hidden inside Telegram Mini App (Telegram shows its own title bar) */}
-      {!window.Telegram?.WebApp && (
+      {!tg && (
         <header className="px-4 py-3 border-b border-espresso/8">
           <h1 className="text-base font-semibold text-espresso tracking-tight">
             Split the Bill
@@ -124,6 +147,21 @@ export function ExpenseForm() {
           viewMode={store.viewMode}
           setViewMode={store.setViewMode}
         />
+      )}
+
+      {/* Share button — Telegram only, creator only, not in assignment mode */}
+      {tg && billId && isCreator && !store.inAssignmentMode && (
+        <div className="px-4 pt-2 pb-4">
+          <button
+            className="w-full py-3 rounded-xl bg-terracotta text-white font-semibold text-sm"
+            onClick={() => {
+              const chatId = tg?.initDataUnsafe?.chat?.id;
+              shareBill(billId, chatId).catch(() => {});
+            }}
+          >
+            Share with Group
+          </button>
+        </div>
       )}
 
       {/* Currency Selector */}

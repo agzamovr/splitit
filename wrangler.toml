@@ -1,0 +1,7 @@
+name = "splitit"
+pages_build_output_dir = "dist"
+
+[[kv_namespaces]]
+binding = "SPLIT_BILLS"
+id = "<kv-namespace-id>"
+preview_id = "<kv-namespace-preview-id>"
