@@ -47,7 +47,6 @@ function PersonAvatar({ name, photoUrl, className = "" }: { name: string; photoU
 
 function PersonCardAssignment({
   person,
-  index,
   currency,
   computedAmount,
   isAssignedInItemMode = false,
