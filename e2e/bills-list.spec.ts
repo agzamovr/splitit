@@ -269,12 +269,93 @@ test.describe("/bills page — with Telegram + mocked API", () => {
   });
 });
 
+// ─── Bills list: loading state ────────────────────────────────────────────────
+
+test.describe("Bills list — loading state", () => {
+  test("shows 'Loading…' while API is pending in Telegram context", async ({ page }) => {
+    await mockTelegram(page);
+    let resolveRoute!: () => void;
+    const held = new Promise<void>((res) => { resolveRoute = res; });
+    await page.route("/api/bills", async (route) => {
+      if (route.request().method() === "GET") {
+        await held;
+        await route.fulfill({ json: [] });
+      } else {
+        await route.continue();
+      }
+    });
+    await page.goto("/bills");
+    await expect(page.getByText("Loading…")).toBeVisible();
+    resolveRoute();
+    await expect(page.getByText("No bills yet")).toBeVisible();
+  });
+});
+
+// ─── Bills list: delete per-bill ─────────────────────────────────────────────
+
+test.describe("Bills list — delete per-bill", () => {
+  const bill = makeBill({ id: "del1", receiptTitle: "To Delete" });
+
+  test.beforeEach(async ({ page }) => {
+    await mockTelegram(page);
+    await page.route("/api/bills", (route) => {
+      if (route.request().method() === "GET") return route.fulfill({ json: [bill] });
+      return route.continue();
+    });
+    await page.goto("/bills");
+    await expect(page.getByText("To Delete")).toBeVisible();
+  });
+
+  test("trash icon appears for each bill", async ({ page }) => {
+    await expect(page.getByRole("button", { name: "Delete bill" })).toBeVisible();
+  });
+
+  test("clicking trash shows Delete/Cancel confirm buttons", async ({ page }) => {
+    await page.locator('button[aria-label="Delete bill"]').click();
+    await expect(page.getByRole("button", { name: "Delete", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Cancel", exact: true })).toBeVisible();
+  });
+
+  test("Cancel hides the confirm buttons", async ({ page }) => {
+    await page.locator('button[aria-label="Delete bill"]').click();
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(page.locator('button[aria-label="Delete bill"]')).toBeVisible();
+    await expect(page.getByRole("button", { name: "Delete", exact: true })).not.toBeVisible();
+  });
+
+  test("Delete removes bill optimistically", async ({ page }) => {
+    await page.route("/api/bills/del1", (route) => {
+      if (route.request().method() === "DELETE") return route.fulfill({ json: {} });
+      return route.continue();
+    });
+    // After a successful delete, the onSettled refetch should return empty
+    await page.route("/api/bills", (route) => {
+      if (route.request().method() === "GET") return route.fulfill({ json: [] });
+      return route.continue();
+    });
+    await page.locator('button[aria-label="Delete bill"]').click();
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await expect(page.getByText("To Delete")).not.toBeVisible();
+    await expect(page.getByText("No bills yet")).toBeVisible();
+  });
+
+  test("bill reappears after DELETE failure (rollback)", async ({ page }) => {
+    await page.route("/api/bills/del1", (route) => {
+      if (route.request().method() === "DELETE") return route.fulfill({ status: 500, body: "error" });
+      return route.continue();
+    });
+    await page.locator('button[aria-label="Delete bill"]').click();
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    // onError restores previous cache, onSettled refetches — bill returns
+    await expect(page.getByText("To Delete")).toBeVisible({ timeout: 3000 });
+  });
+});
+
 // ─── Save indicator ───────────────────────────────────────────────────────────
 
 test.describe("Save indicator", () => {
   test.beforeEach(async ({ page }) => {
     await mockTelegram(page);
-    // Mock bill creation
     await page.route("/api/bills", async (route) => {
       if (route.request().method() === "POST") {
         await route.fulfill({ json: { billId: "test-bill-id" } });
@@ -282,7 +363,6 @@ test.describe("Save indicator", () => {
         await route.fulfill({ json: [] });
       }
     });
-    // Mock polling GET /api/bills/test-bill-id
     await page.route("/api/bills/test-bill-id", async (route) => {
       if (route.request().method() === "GET") {
         await route.fulfill({
