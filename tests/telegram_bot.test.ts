@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { onRequestPost } from "@functions/telegram_bot";
-import type { Env } from "@functions/lib/types";
+import type { Bill, Env } from "@functions/lib/types";
+import { createMockKV, makeEnv } from "./helpers";
 
 const ENV: Env = {
   SPLIT_BILLS: {} as KVNamespace,
@@ -8,7 +9,7 @@ const ENV: Env = {
   APP_URL: "https://example.com",
 };
 
-function makeCtx(body: unknown) {
+function makeCtx(body: unknown, env: Env = ENV) {
   return {
     params: {},
     request: new Request("http://localhost/bot", {
@@ -16,7 +17,7 @@ function makeCtx(body: unknown) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }),
-    env: ENV,
+    env,
     waitUntil: vi.fn(),
     passThroughOnException: vi.fn(),
     next: vi.fn(),
@@ -27,6 +28,18 @@ function makeCtx(body: unknown) {
 
 function update(text: string, chatId = 42) {
   return { message: { chat: { id: chatId, type: "group" }, text } };
+}
+
+function updateFromUser(text: string, userId: number, chatId = userId) {
+  return { message: { chat: { id: chatId, type: "private" }, from: { id: userId, first_name: "Alice" }, text } };
+}
+
+function makeBill(id: string, title: string, userId = 99): Bill {
+  return {
+    id, creatorTelegramId: userId, createdAt: Date.now(),
+    receiptTitle: title, expenses: [], manualTotal: "50",
+    people: [], assignments: {}, splitMode: "equally", currency: "USD", version: 1,
+  };
 }
 
 describe("telegram_bot webhook", () => {
@@ -102,5 +115,120 @@ describe("telegram_bot webhook", () => {
   it("unknown command returns 'ok' without sending a message", async () => {
     await onRequestPost(makeCtx(update("/unknown_command")));
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  describe("/mybills", () => {
+    it("sends 'no bills yet' with New Bill button when user has no bills", async () => {
+      const { kv } = createMockKV();
+      await onRequestPost(makeCtx(updateFromUser("/mybills", 99), makeEnv(kv)));
+
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const payload = JSON.parse(fetchMock.mock.calls[0][1].body as string) as {
+        chat_id: number; text: string;
+        reply_markup: { inline_keyboard: { text: string; web_app?: { url: string } }[][] };
+      };
+      expect(payload.chat_id).toBe(99);
+      expect(payload.text).toContain("no saved bills");
+      expect(payload.reply_markup.inline_keyboard[0][0].text).toBe("New Bill");
+      expect(payload.reply_markup.inline_keyboard[0][0].web_app?.url).toBe("https://example.com");
+    });
+
+    it("sends bill buttons for each indexed bill", async () => {
+      const mockKV = createMockKV();
+      const bill = makeBill("bill-abc", "Dinner with friends");
+      mockKV.store.set("bill:bill-abc", JSON.stringify(bill));
+      mockKV.store.set("user:99:bills", JSON.stringify(["bill-abc"]));
+
+      await onRequestPost(makeCtx(updateFromUser("/mybills", 99), makeEnv(mockKV.kv)));
+
+      const payload = JSON.parse(fetchMock.mock.calls[0][1].body as string) as {
+        text: string;
+        reply_markup: { inline_keyboard: { text: string; web_app?: { url: string } }[][] };
+      };
+      expect(payload.text).toContain("most recent bill");
+      const billBtn = payload.reply_markup.inline_keyboard[0][0];
+      expect(billBtn.text).toBe("Dinner with friends");
+      expect(billBtn.web_app?.url).toBe("https://example.com/?billId=bill-abc");
+    });
+
+    it("includes 'View All Bills' button that opens /bills page", async () => {
+      const mockKV = createMockKV();
+      mockKV.store.set("bill:b1", JSON.stringify(makeBill("b1", "Lunch")));
+      mockKV.store.set("user:99:bills", JSON.stringify(["b1"]));
+
+      await onRequestPost(makeCtx(updateFromUser("/mybills", 99), makeEnv(mockKV.kv)));
+
+      const payload = JSON.parse(fetchMock.mock.calls[0][1].body as string) as {
+        reply_markup: { inline_keyboard: { text: string; web_app?: { url: string } }[][] };
+      };
+      const lastRow = payload.reply_markup.inline_keyboard.at(-1)!;
+      expect(lastRow[0].text).toBe("View All Bills");
+      expect(lastRow[0].web_app?.url).toBe("https://example.com/bills");
+    });
+
+    it("shows plural text for multiple bills", async () => {
+      const mockKV = createMockKV();
+      mockKV.store.set("bill:b1", JSON.stringify(makeBill("b1", "Lunch")));
+      mockKV.store.set("bill:b2", JSON.stringify(makeBill("b2", "Dinner")));
+      mockKV.store.set("user:99:bills", JSON.stringify(["b1", "b2"]));
+
+      await onRequestPost(makeCtx(updateFromUser("/mybills", 99), makeEnv(mockKV.kv)));
+
+      const payload = JSON.parse(fetchMock.mock.calls[0][1].body as string) as { text: string };
+      expect(payload.text).toMatch(/2 most recent bills/);
+    });
+
+    it("caps at 10 bills even if more are indexed", async () => {
+      const mockKV = createMockKV();
+      const ids = Array.from({ length: 15 }, (_, i) => `b${i}`);
+      for (const id of ids) {
+        mockKV.store.set(`bill:${id}`, JSON.stringify(makeBill(id, `Bill ${id}`)));
+      }
+      mockKV.store.set("user:99:bills", JSON.stringify(ids));
+
+      await onRequestPost(makeCtx(updateFromUser("/mybills", 99), makeEnv(mockKV.kv)));
+
+      const payload = JSON.parse(fetchMock.mock.calls[0][1].body as string) as {
+        reply_markup: { inline_keyboard: unknown[][] };
+      };
+      // 10 bill rows + 1 "View All Bills" row
+      expect(payload.reply_markup.inline_keyboard).toHaveLength(11);
+    });
+
+    it("skips expired bills silently", async () => {
+      const mockKV = createMockKV();
+      mockKV.store.set("bill:live", JSON.stringify(makeBill("live", "Live Bill")));
+      // "expired" is in index but not in KV
+      mockKV.store.set("user:99:bills", JSON.stringify(["live", "expired"]));
+
+      await onRequestPost(makeCtx(updateFromUser("/mybills", 99), makeEnv(mockKV.kv)));
+
+      const payload = JSON.parse(fetchMock.mock.calls[0][1].body as string) as {
+        reply_markup: { inline_keyboard: { text: string }[][] };
+      };
+      const billRows = payload.reply_markup.inline_keyboard.slice(0, -1);
+      expect(billRows).toHaveLength(1);
+      expect(billRows[0][0].text).toBe("Live Bill");
+    });
+
+    it("uses 'Untitled' for bills with empty receiptTitle", async () => {
+      const mockKV = createMockKV();
+      mockKV.store.set("bill:b1", JSON.stringify(makeBill("b1", "")));
+      mockKV.store.set("user:99:bills", JSON.stringify(["b1"]));
+
+      await onRequestPost(makeCtx(updateFromUser("/mybills", 99), makeEnv(mockKV.kv)));
+
+      const payload = JSON.parse(fetchMock.mock.calls[0][1].body as string) as {
+        reply_markup: { inline_keyboard: { text: string }[][] };
+      };
+      expect(payload.reply_markup.inline_keyboard[0][0].text).toBe("Untitled");
+    });
+
+    it("does nothing when message has no from field", async () => {
+      const { kv } = createMockKV();
+      // update() helper has no from field
+      await onRequestPost(makeCtx(update("/mybills", 42), makeEnv(kv)));
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
   });
 });
