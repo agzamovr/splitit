@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createBill, getBill, patchBill, type BillPayload } from "./api";
+import { billKeys } from "./queryKeys";
 import type { useExpenseStore } from "./useExpenseStore";
 
 type Store = ReturnType<typeof useExpenseStore>;
@@ -22,7 +24,10 @@ interface UseBillSyncOptions {
 }
 
 export function useBillSync({ store, onBillLoaded }: UseBillSyncOptions) {
-  const [billId, setBillId] = useState<string | null>(null);
+  const [billId, setBillId] = useState<string | null>(() => {
+    if (!window.Telegram?.WebApp?.initData) return null;
+    return new URLSearchParams(window.location.search).get("billId");
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCreator, setIsCreator] = useState(false);
@@ -31,89 +36,85 @@ export function useBillSync({ store, onBillLoaded }: UseBillSyncOptions) {
 
   const versionRef = useRef(0);
   const loadedFromServerRef = useRef(false);
-  const billIdRef = useRef<string | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isCreatorSetRef = useRef(false);
+  const billIdRef = useRef<string | null>(billId);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const storeRef = useRef(store);
   const onBillLoadedRef = useRef(onBillLoaded);
+  const queryClient = useQueryClient();
 
   // Keep refs in sync on every render without scheduling effects
   storeRef.current = store;
   onBillLoadedRef.current = onBillLoaded;
 
-  // Mount: initialize bill from URL or create new
+  // Mount: create new bill if no billId in URL
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
-    if (!tg?.initData) return; // standalone browser mode
+    if (!tg?.initData) return;
+    if (billId) { setLoading(false); return; } // useQuery handles existing bill
 
-    const urlBillId = new URLSearchParams(window.location.search).get("billId");
-    const tgUser = tg.initDataUnsafe?.user;
     let mounted = true;
-
     setLoading(true);
-
-    function startPolling(id: string) {
-      intervalRef.current = setInterval(async () => {
-        try {
-          const bill = await getBill(id);
-          if (!mounted) return;
-          if (bill.version > versionRef.current) {
-            loadedFromServerRef.current = true;
-            versionRef.current = bill.version;
-            onBillLoadedRef.current(bill);
-          }
-        } catch {
-          // ignore transient poll errors
-        }
-      }, 4000);
-    }
-
-    if (urlBillId) {
-      getBill(urlBillId)
-        .then((bill) => {
-          if (!mounted) return;
-          loadedFromServerRef.current = true;
-          onBillLoadedRef.current(bill);
-          versionRef.current = bill.version;
-          billIdRef.current = urlBillId;
-          setBillId(urlBillId);
-          setIsCreator(tgUser ? bill.creatorTelegramId === tgUser.id : false);
-          setLoading(false);
-          startPolling(urlBillId);
-        })
-        .catch((err: Error) => {
-          if (!mounted) return;
-          setError(err.message);
-          setLoading(false);
-        });
-    } else {
-      createBill(storeSnapshot(storeRef.current))
-        .then(({ billId: newId }) => {
-          if (!mounted) return;
-          billIdRef.current = newId;
-          setBillId(newId);
-          setIsCreator(true);
-          versionRef.current = 1;
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.set("billId", newId);
-          window.history.replaceState({}, "", newUrl.toString());
-          setLoading(false);
-          startPolling(newId);
-        })
-        .catch((err: Error) => {
-          if (!mounted) return;
-          setError(err.message);
-          setLoading(false);
-        });
-    }
-
+    createBill(storeSnapshot(storeRef.current))
+      .then(({ billId: newId }) => {
+        if (!mounted) return;
+        billIdRef.current = newId;
+        setBillId(newId);
+        setIsCreator(true);
+        isCreatorSetRef.current = true;
+        versionRef.current = 1;
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set("billId", newId);
+        window.history.replaceState({}, "", newUrl.toString());
+        setLoading(false);
+      })
+      .catch((err: Error) => {
+        if (!mounted) return;
+        setError(err.message);
+        setLoading(false);
+      });
     return () => {
       mounted = false;
-      if (intervalRef.current) clearInterval(intervalRef.current);
       if (debounceRef.current) clearTimeout(debounceRef.current);
       if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Poll for remote updates via TanStack Query
+  const { data: remoteBill, isPending: isRemotePending } = useQuery({
+    queryKey: billKeys.detail(billId ?? ""),
+    queryFn: () => getBill(billId!),
+    enabled: !!billId && !!window.Telegram?.WebApp?.initData,
+    refetchInterval: 4000,
+    staleTime: 0,
+  });
+
+  // React to remote bill updates
+  useEffect(() => {
+    if (!remoteBill) return;
+    if (remoteBill.version <= versionRef.current) return;
+    loadedFromServerRef.current = true;
+    versionRef.current = remoteBill.version;
+    if (!isCreatorSetRef.current) {
+      isCreatorSetRef.current = true;
+      const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+      setIsCreator(tgUser ? remoteBill.creatorTelegramId === tgUser.id : false);
+    }
+    setLoading(false);
+    onBillLoadedRef.current(remoteBill);
+  }, [remoteBill]);
+
+  const patchMutation = useMutation({
+    mutationFn: (payload: BillPayload) => patchBill(billIdRef.current!, payload),
+    onSuccess: (bill) => {
+      versionRef.current = bill.version;
+      queryClient.setQueryData(billKeys.detail(billIdRef.current!), bill);
+      setSaveStatus("saved");
+      if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current);
+      saveStatusTimerRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
+    },
+    onError: () => setSaveStatus("error"),
+  });
 
   // Debounced write on store changes
   const snapshotKey = useMemo(
@@ -132,20 +133,13 @@ export function useBillSync({ store, onBillLoaded }: UseBillSyncOptions) {
     }
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
+    debounceRef.current = setTimeout(() => {
       if (!billIdRef.current) return;
       setSaveStatus("saving");
-      try {
-        const bill = await patchBill(billIdRef.current, storeSnapshot(storeRef.current));
-        versionRef.current = bill.version;
-        setSaveStatus("saved");
-        if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current);
-        saveStatusTimerRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
-      } catch {
-        setSaveStatus("error");
-      }
+      patchMutation.mutate(storeSnapshot(storeRef.current));
     }, 500);
   }, [snapshotKey, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { billId, loading, error, isCreator, saveStatus };
+  const loadingFromUrl = !!billId && isRemotePending && !remoteBill;
+  return { billId, loading: loading || loadingFromUrl, error, isCreator, saveStatus };
 }

@@ -73,14 +73,16 @@ test.describe("/bills page — standalone (no Telegram)", () => {
     await expect(page).toHaveURL("/");
   });
 
-  test("All/Unpaid filter toggle renders both buttons", async ({ page }) => {
+  test("All/Unpaid/Unbalanced filter toggle renders all three buttons", async ({ page }) => {
     await expect(page.getByRole("button", { name: "All" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Unpaid" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Unbalanced" })).toBeVisible();
   });
 
   test("'All' filter is active by default", async ({ page }) => {
     await expect(page.getByRole("button", { name: "All" })).toHaveClass(/bg-white/);
     await expect(page.getByRole("button", { name: "Unpaid" })).not.toHaveClass(/bg-white/);
+    await expect(page.getByRole("button", { name: "Unbalanced" })).not.toHaveClass(/bg-white/);
   });
 });
 
@@ -103,30 +105,31 @@ test.describe("/bills page — with Telegram + mocked API", () => {
     await expect(page.getByText("120.00")).toBeVisible();
   });
 
-  test("shows 'Balanced' badge for a fully balanced bill (amounts mode)", async ({ page }) => {
-    // total = 100, covered = 50 + 50 = 100 → balanced
-    const bill = makeBill();
-    await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
-    await page.goto("/bills");
-    await expect(page.getByText("Balanced")).toBeVisible();
-  });
-
-  test("shows 'Unpaid' badge for an unbalanced bill", async ({ page }) => {
-    // total = 100, covered = 30 → not balanced
+  test("shows 'Collected' badge when all people have paid", async ({ page }) => {
     const bill = makeBill({
-      people: [{ id: "p1", name: "Alice", amount: "30", paid: "" }],
+      people: [
+        { id: "p1", name: "Alice", amount: "50", paid: "50" },
+        { id: "p2", name: "Bob", amount: "50", paid: "50" },
+      ],
     });
     await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
     await page.goto("/bills");
-    // Badge is a span inside the bill row, not the filter button
+    await expect(page.locator("li span").filter({ hasText: /^Collected$/ })).toBeVisible();
+  });
+
+  test("shows 'Unpaid' badge when nobody has paid", async ({ page }) => {
+    // paid="" for all people → sum(paid) = 0 < 100
+    const bill = makeBill();
+    await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
+    await page.goto("/bills");
     await expect(page.locator("li span").filter({ hasText: /^Unpaid$/ })).toBeVisible();
   });
 
-  test("shows 'Balanced' for empty bill (total = 0)", async ({ page }) => {
+  test("shows 'Collected' for empty bill (total = 0)", async ({ page }) => {
     const bill = makeBill({ manualTotal: "0", people: [] });
     await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
     await page.goto("/bills");
-    await expect(page.getByText("Balanced")).toBeVisible();
+    await expect(page.locator("li span").filter({ hasText: /^Collected$/ })).toBeVisible();
   });
 
   test("shows people count in subtitle", async ({ page }) => {
@@ -143,10 +146,16 @@ test.describe("/bills page — with Telegram + mocked API", () => {
     await expect(page.getByText(/people/)).not.toBeVisible();
   });
 
-  test("'Unpaid' filter hides balanced bills and shows 'No unpaid bills' when all are balanced", async ({
+  test("'Unpaid' filter hides collected bills and shows 'No unpaid bills' when all are collected", async ({
     page,
   }) => {
-    const bill = makeBill(); // balanced
+    // all paid → collected
+    const bill = makeBill({
+      people: [
+        { id: "p1", name: "Alice", amount: "50", paid: "50" },
+        { id: "p2", name: "Bob", amount: "50", paid: "50" },
+      ],
+    });
     await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
     await page.goto("/bills");
     await page.getByRole("button", { name: "Unpaid", exact: true }).click();
@@ -154,33 +163,83 @@ test.describe("/bills page — with Telegram + mocked API", () => {
     await expect(page.getByText("Pizza night")).not.toBeVisible();
   });
 
-  test("'Unpaid' filter shows only unbalanced bills", async ({ page }) => {
-    const balanced = makeBill({ id: "b1", receiptTitle: "Settled" });
-    const unbalanced = makeBill({
-      id: "b2",
-      receiptTitle: "Overdue",
-      people: [{ id: "p1", name: "Alice", amount: "30", paid: "" }],
+  test("'Unpaid' filter shows only uncollected bills", async ({ page }) => {
+    const collected = makeBill({
+      id: "b1",
+      receiptTitle: "Fully Paid",
+      people: [
+        { id: "p1", name: "Alice", amount: "50", paid: "50" },
+        { id: "p2", name: "Bob", amount: "50", paid: "50" },
+      ],
     });
-    await page.route("/api/bills", (route) => route.fulfill({ json: [balanced, unbalanced] }));
+    const uncollected = makeBill({ id: "b2", receiptTitle: "Overdue" }); // paid="" → uncollected
+    await page.route("/api/bills", (route) => route.fulfill({ json: [collected, uncollected] }));
     await page.goto("/bills");
     await page.getByRole("button", { name: "Unpaid", exact: true }).click();
     await expect(page.locator("ul li").filter({ hasText: "Overdue" })).toBeVisible();
-    await expect(page.locator("ul li").filter({ hasText: "Settled" })).not.toBeVisible();
+    await expect(page.locator("ul li").filter({ hasText: "Fully Paid" })).not.toBeVisible();
   });
 
   test("'All' filter shows all bills after switching from Unpaid", async ({ page }) => {
-    const balanced = makeBill({ id: "b1", receiptTitle: "Settled" });
+    const collected = makeBill({
+      id: "b1",
+      receiptTitle: "Fully Paid",
+      people: [
+        { id: "p1", name: "Alice", amount: "50", paid: "50" },
+        { id: "p2", name: "Bob", amount: "50", paid: "50" },
+      ],
+    });
+    const uncollected = makeBill({ id: "b2", receiptTitle: "Overdue" });
+    await page.route("/api/bills", (route) => route.fulfill({ json: [collected, uncollected] }));
+    await page.goto("/bills");
+    await page.getByRole("button", { name: "Unpaid", exact: true }).click();
+    await page.getByRole("button", { name: "All", exact: true }).click();
+    await expect(page.locator("ul li").filter({ hasText: "Fully Paid" })).toBeVisible();
+    await expect(page.locator("ul li").filter({ hasText: "Overdue" })).toBeVisible();
+  });
+
+  test("'Unbalanced' filter shows only bills where split amounts don't add up", async ({ page }) => {
+    const balanced = makeBill({ id: "b1", receiptTitle: "Even Split" }); // 50+50=100 ✓
     const unbalanced = makeBill({
       id: "b2",
-      receiptTitle: "Overdue",
+      receiptTitle: "Bad Split",
+      people: [{ id: "p1", name: "Alice", amount: "30", paid: "" }], // 30 ≠ 100
+    });
+    await page.route("/api/bills", (route) => route.fulfill({ json: [balanced, unbalanced] }));
+    await page.goto("/bills");
+    await page.getByRole("button", { name: "Unbalanced", exact: true }).click();
+    await expect(page.locator("ul li").filter({ hasText: "Bad Split" })).toBeVisible();
+    await expect(page.locator("ul li").filter({ hasText: "Even Split" })).not.toBeVisible();
+  });
+
+  test("'Unbalanced' filter shows 'No unbalanced bills' when all are balanced", async ({ page }) => {
+    const bill = makeBill(); // 50+50=100 → balanced
+    await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
+    await page.goto("/bills");
+    await page.getByRole("button", { name: "Unbalanced", exact: true }).click();
+    await expect(page.getByText("No unbalanced bills")).toBeVisible();
+  });
+
+  test("'All' filter shows all bills after switching from Unbalanced", async ({ page }) => {
+    const balanced = makeBill({ id: "b1", receiptTitle: "Even Split" });
+    const unbalanced = makeBill({
+      id: "b2",
+      receiptTitle: "Bad Split",
       people: [{ id: "p1", name: "Alice", amount: "30", paid: "" }],
     });
     await page.route("/api/bills", (route) => route.fulfill({ json: [balanced, unbalanced] }));
     await page.goto("/bills");
-    await page.getByRole("button", { name: "Unpaid", exact: true }).click();
+    await page.getByRole("button", { name: "Unbalanced", exact: true }).click();
     await page.getByRole("button", { name: "All", exact: true }).click();
-    await expect(page.locator("ul li").filter({ hasText: "Settled" })).toBeVisible();
-    await expect(page.locator("ul li").filter({ hasText: "Overdue" })).toBeVisible();
+    await expect(page.locator("ul li").filter({ hasText: "Even Split" })).toBeVisible();
+    await expect(page.locator("ul li").filter({ hasText: "Bad Split" })).toBeVisible();
+  });
+
+  test("no 'Delete All' button in header", async ({ page }) => {
+    const bill = makeBill();
+    await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
+    await page.goto("/bills");
+    await expect(page.getByTitle("Delete all bills")).not.toBeVisible();
   });
 
   test("clicking a bill navigates to /?billId=...", async ({ page }) => {
@@ -369,7 +428,7 @@ test.describe("New Bill button on /bills", () => {
   test("visible and navigates to /", async ({ page }) => {
     await page.route("/api/bills", (route) => route.fulfill({ json: [] }));
     await page.goto("/bills");
-    const btn = page.getByRole("button", { name: "+ New" });
+    const btn = page.getByRole("button", { name: "New bill" });
     await expect(btn).toBeVisible();
     let navigatedUrl = "";
     page.on("framenavigated", (frame) => {

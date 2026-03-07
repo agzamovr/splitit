@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { listBills, deleteBill, deleteAllBills, type Bill } from "@/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { listBills, deleteBill, type Bill } from "@/api";
 import { formatAmount } from "@/currency";
+import { billKeys } from "@/queryKeys";
 
 export const Route = createFileRoute("/bills")({
   component: BillsPage,
@@ -51,6 +53,13 @@ function isBillBalanced(bill: Bill): boolean {
   return Math.abs(total - covered) < 0.01;
 }
 
+function isBillCollected(bill: Bill): boolean {
+  const total = computeTotal(bill);
+  if (total < 0.01) return true;
+  const totalPaid = bill.people.reduce((sum, p) => sum + (parseFloat(p.paid) || 0), 0);
+  return totalPaid >= total - 0.01;
+}
+
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
@@ -65,19 +74,32 @@ function TrashIcon() {
 
 function BillsPage() {
   const navigate = useNavigate();
-  const [bills, setBills] = useState<Bill[] | null>(null);
-  const [filter, setFilter] = useState<"all" | "unbalanced">("all");
+  const queryClient = useQueryClient();
+  const [filter, setFilter] = useState<"all" | "uncollected" | "unbalanced">("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const tg = window.Telegram?.WebApp ?? null;
+  const isTgContext = !!window.Telegram?.WebApp?.initData;
 
-  useEffect(() => {
-    if (!window.Telegram?.WebApp?.initData) {
-      setBills([]);
-      return;
-    }
-    listBills().then(setBills).catch(() => setBills([]));
-  }, []);
+  const { data: bills, isLoading } = useQuery({
+    queryKey: billKeys.list(),
+    queryFn: listBills,
+    enabled: isTgContext,
+    placeholderData: isTgContext ? undefined : [],
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteBill(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: billKeys.list() });
+      const previous = queryClient.getQueryData<Bill[]>(billKeys.list());
+      queryClient.setQueryData<Bill[]>(billKeys.list(), (old) => old?.filter((b) => b.id !== id) ?? []);
+      return { previous };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(billKeys.list(), ctx.previous);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: billKeys.list() }),
+  });
 
   useEffect(() => {
     if (!tg) return;
@@ -88,34 +110,27 @@ function BillsPage() {
       tg.BackButton.hide();
       tg.BackButton.offClick(goBack);
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const billStats = useMemo(
-    () => new Map((bills ?? []).map((b) => [b.id, { total: computeTotal(b), balanced: isBillBalanced(b) }])),
+    () => new Map((bills ?? []).map((b) => [b.id, {
+      total: computeTotal(b),
+      balanced: isBillBalanced(b),
+      collected: isBillCollected(b),
+    }])),
     [bills],
   );
 
-  const displayed = bills
-    ? filter === "unbalanced"
-      ? bills.filter((b) => !billStats.get(b.id)!.balanced)
-      : bills
-    : [];
+  const displayed = (bills ?? []).filter((b) => {
+    const stats = billStats.get(b.id)!;
+    if (filter === "uncollected") return !stats.collected;
+    if (filter === "unbalanced") return !stats.balanced;
+    return true;
+  });
 
   function handleDelete(id: string) {
-    setBills((prev) => prev!.filter((b) => b.id !== id));
     setDeletingId(null);
-    deleteBill(id).catch(() => {
-      // restore on failure
-      listBills().then(setBills).catch(() => {});
-    });
-  }
-
-  function handleDeleteAll() {
-    setBills([]);
-    setConfirmDeleteAll(false);
-    deleteAllBills().catch(() => {
-      listBills().then(setBills).catch(() => {});
-    });
+    deleteMutation.mutate(id);
   }
 
   return (
@@ -132,79 +147,48 @@ function BillsPage() {
         )}
         <h1 className="text-base font-semibold text-espresso tracking-tight flex-1">My Bills</h1>
 
+        {/* Filter toggle */}
+        <div className="flex gap-1 bg-espresso/8 rounded-lg p-1 text-xs">
+          {(["all", "uncollected", "unbalanced"] as const).map((f) => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={`px-3 py-1 rounded-md font-medium transition-colors ${
+                filter === f ? "bg-white text-espresso shadow-sm" : "text-espresso/50"
+              }`}>
+              {f === "all" ? "All" : f === "uncollected" ? "Unpaid" : "Unbalanced"}
+            </button>
+          ))}
+        </div>
+
         {/* New Bill */}
         <button
           onClick={() => { window.location.href = "/"; }}
-          className="text-xs font-medium text-terracotta hover:text-terracotta/80 transition-colors"
+          className="text-espresso/40 hover:text-terracotta transition-colors"
+          title="New bill"
+          aria-label="New bill"
         >
-          + New
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
         </button>
-
-        {/* Filter toggle */}
-        <div className="flex gap-1 bg-espresso/8 rounded-lg p-1 text-xs">
-          <button
-            onClick={() => setFilter("all")}
-            className={`px-3 py-1 rounded-md font-medium transition-colors ${
-              filter === "all" ? "bg-white text-espresso shadow-sm" : "text-espresso/50"
-            }`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => setFilter("unbalanced")}
-            className={`px-3 py-1 rounded-md font-medium transition-colors ${
-              filter === "unbalanced" ? "bg-white text-espresso shadow-sm" : "text-espresso/50"
-            }`}
-          >
-            Unpaid
-          </button>
-        </div>
-
-        {/* Delete All */}
-        {bills && bills.length > 0 && (
-          confirmDeleteAll ? (
-            <div className="flex items-center gap-1 text-xs">
-              <span className="text-espresso/50">Delete all?</span>
-              <button
-                onClick={handleDeleteAll}
-                className="px-2 py-1 rounded bg-red-500 text-white font-medium"
-              >
-                Yes
-              </button>
-              <button
-                onClick={() => setConfirmDeleteAll(false)}
-                className="px-2 py-1 rounded bg-espresso/10 text-espresso/60 font-medium"
-              >
-                No
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setConfirmDeleteAll(true)}
-              className="text-xs text-espresso/30 hover:text-red-400 transition-colors ml-1"
-              title="Delete all bills"
-            >
-              <TrashIcon />
-            </button>
-          )
-        )}
       </div>
 
       {/* List */}
-      {bills === null ? (
+      {isLoading ? (
         <div className="flex items-center justify-center pt-20">
           <p className="text-espresso/40 text-sm">Loading…</p>
         </div>
       ) : displayed.length === 0 ? (
         <div className="flex items-center justify-center pt-20">
           <p className="text-espresso/40 text-sm">
-            {filter === "unbalanced" ? "No unpaid bills" : "No bills yet"}
+            {filter === "uncollected" ? "No unpaid bills"
+              : filter === "unbalanced" ? "No unbalanced bills"
+              : "No bills yet"}
           </p>
         </div>
       ) : (
         <ul className="divide-y divide-espresso/8">
           {displayed.map((bill) => {
-            const { total, balanced } = billStats.get(bill.id)!;
+            const { total, collected } = billStats.get(bill.id)!;
             return (
               <li key={bill.id} className="flex items-center">
                 <button
@@ -226,14 +210,10 @@ function BillsPage() {
                         {formatAmount(total, bill.currency)}
                       </span>
                     )}
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        balanced
-                          ? "bg-green-100 text-green-700"
-                          : "bg-amber-100 text-amber-700"
-                      }`}
-                    >
-                      {balanced ? "Balanced" : "Unpaid"}
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      collected ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                    }`}>
+                      {collected ? "Collected" : "Unpaid"}
                     </span>
                   </div>
                 </button>
