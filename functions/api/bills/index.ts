@@ -1,6 +1,6 @@
 import type { Bill, Env } from "../../lib/types";
 import { requireUser } from "../../lib/auth";
-import { billKey, putBill } from "../../lib/kv";
+import { billKey, putBill, addBillToUserIndex, getUserBillIds } from "../../lib/kv";
 
 function nanoid(size = 10): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -31,16 +31,27 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     version: 1,
   };
 
-  await putBill(context.env.SPLIT_BILLS, bill);
+  await Promise.all([
+    putBill(context.env.SPLIT_BILLS, bill),
+    addBillToUserIndex(context.env.SPLIT_BILLS, auth.user.id, billId),
+  ]);
 
   return new Response(JSON.stringify({ billId }), {
     headers: { "Content-Type": "application/json" },
   });
 };
 
-export const onRequestGet: PagesFunction<Env> = async () => {
-  return new Response(JSON.stringify({ error: "Method Not Allowed" }), {
-    status: 405,
+export const onRequestGet: PagesFunction<Env> = async (context) => {
+  const auth = await requireUser(context);
+  if (!auth.ok) return auth.response;
+
+  const ids = await getUserBillIds(context.env.SPLIT_BILLS, auth.user.id);
+  const raws = await Promise.all(ids.map((id) => context.env.SPLIT_BILLS.get(billKey(id))));
+  const bills = raws
+    .filter((r): r is string => r !== null)
+    .map((r) => JSON.parse(r) as Bill);
+
+  return new Response(JSON.stringify(bills), {
     headers: { "Content-Type": "application/json" },
   });
 };

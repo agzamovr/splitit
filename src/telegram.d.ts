@@ -15,6 +15,12 @@ interface TelegramWebApp {
   };
   sendData(data: string): void;
   close(): void;
+  BackButton: {
+    show(): void;
+    hide(): void;
+    onClick(callback: () => void): void;
+    offClick(callback: () => void): void;
+  };
 }
 
 interface Window {

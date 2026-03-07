@@ -60,3 +60,7 @@ export function patchBill(id: string, partial: Partial<BillPayload>): Promise<Bi
 export function shareBill(id: string, chatId?: number): Promise<void> {
   return apiFetch(`/api/bills/${id}/share`, { method: "POST", body: JSON.stringify({ chatId }) });
 }
+
+export function listBills(): Promise<Bill[]> {
+  return apiFetch("/api/bills");
+}

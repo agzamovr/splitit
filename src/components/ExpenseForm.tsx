@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useExpenseStore } from "../useExpenseStore";
 import { useBillSync } from "../useBillSync";
 import { shareBill } from "../api";
@@ -13,6 +14,7 @@ export function ExpenseForm() {
     store,
     onBillLoaded: store.loadBill,
   });
+  const navigate = useNavigate();
   const formRef = useRef<HTMLDivElement>(null);
   const [showCurrencySelector, setShowCurrencySelector] = useState(false);
   const [shareStatus, setShareStatus] = useState<"idle" | "sending" | "sent" | "error" | "no-chat">("idle");
@@ -190,6 +192,18 @@ export function ExpenseForm() {
           {shareStatus === "error" && (
             <p className="mt-2 text-xs text-center text-red-400">Failed to share</p>
           )}
+        </div>
+      )}
+
+      {/* My Bills link — Telegram only */}
+      {tg && !store.inAssignmentMode && (
+        <div className="px-4 pb-2 flex justify-center">
+          <button
+            className="text-sm text-espresso/40 hover:text-espresso/60 transition-colors"
+            onClick={() => void navigate({ to: "/bills" })}
+          >
+            My Bills
+          </button>
         </div>
       )}
 
