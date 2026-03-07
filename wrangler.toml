@@ -1,9 +1,5 @@
 name = "splitit"
 pages_build_output_dir = "dist"
-
-[build]
-command = "pnpm run build"
-
 [[kv_namespaces]]
 binding = "SPLIT_BILLS"
 id = "99356a94cf1c4fbe841a69c106abaa7b"
