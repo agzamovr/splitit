@@ -8,7 +8,6 @@ import { CurrencySelector } from "./CurrencySelector";
 export function ExpenseForm() {
   const store = useExpenseStore();
   const formRef = useRef<HTMLDivElement>(null);
-  const localCurrencyRef = useRef(store.currency);
   const [showCurrencySelector, setShowCurrencySelector] = useState(false);
   const [settledDebtorIds, setSettledDebtorIds] = useState<Set<string>>(new Set());
   const [focusedExpenseId, setFocusedExpenseId] = useState<string | null>(null);
@@ -17,10 +16,6 @@ export function ExpenseForm() {
   useEffect(() => {
     setSettledDebtorIds(new Set());
   }, [store.payerId]);
-
-  useEffect(() => {
-    localCurrencyRef.current = store.currency;
-  }, [store.currency]);
 
   const handleSettleSubModeChange = (mode: "payer" | "own") => {
     if (mode === settleSubMode) return;
@@ -48,6 +43,26 @@ export function ExpenseForm() {
   const isPaymentMode = store.viewMode === "settle";
   const payer = store.payerId ? store.people.find(p => p.id === store.payerId) ?? null : null;
   const payerName = payer?.name || "";
+
+  const summaryCoveredAmount = !isPaymentMode
+    ? store.coveredAmount
+    : settleSubMode === "own"
+      ? store.people.filter(p => settledDebtorIds.has(p.id)).reduce((sum, p) => sum + (store.computedAmounts[p.id] || 0), 0)
+      : store.payerId ? (store.computedAmounts[store.payerId] || 0) : 0;
+
+  const summaryRemaining = !isPaymentMode
+    ? store.remaining
+    : settleSubMode === "own"
+      ? store.people.filter(p => !settledDebtorIds.has(p.id)).reduce((sum, p) => sum + (store.computedAmounts[p.id] || 0), 0)
+      : !store.payerId
+        ? store.total
+        : store.people.filter(p => p.id !== store.payerId && !settledDebtorIds.has(p.id)).reduce((sum, p) => sum + (store.computedAmounts[p.id] || 0), 0);
+
+  const summaryIsBalanced = !isPaymentMode
+    ? store.isBalanced
+    : settleSubMode === "own"
+      ? store.people.every(p => settledDebtorIds.has(p.id))
+      : !!store.payerId && store.people.filter(p => p.id !== store.payerId).every(p => settledDebtorIds.has(p.id));
 
   return (
     <div
@@ -101,33 +116,9 @@ export function ExpenseForm() {
           currency={store.currency}
           isSettleMode={isPaymentMode}
           payerName={isPaymentMode && settleSubMode === "payer" ? payerName : undefined}
-          coveredAmount={(() => {
-            if (!isPaymentMode) return store.coveredAmount;
-            if (settleSubMode === "own") {
-              return store.people
-                .filter(p => settledDebtorIds.has(p.id))
-                .reduce((sum, p) => sum + (store.computedAmounts[p.id] || 0), 0);
-            }
-            return store.payerId ? (store.computedAmounts[store.payerId] || 0) : 0;
-          })()}
-          remaining={(() => {
-            if (!isPaymentMode) return store.remaining;
-            if (settleSubMode === "own") {
-              return store.people
-                .filter(p => !settledDebtorIds.has(p.id))
-                .reduce((sum, p) => sum + (store.computedAmounts[p.id] || 0), 0);
-            }
-            if (!store.payerId) return store.total;
-            return store.people
-              .filter(p => p.id !== store.payerId && !settledDebtorIds.has(p.id))
-              .reduce((sum, p) => sum + (store.computedAmounts[p.id] || 0), 0);
-          })()}
-          isBalanced={(() => {
-            if (!isPaymentMode) return store.isBalanced;
-            if (settleSubMode === "own") return store.people.every(p => settledDebtorIds.has(p.id));
-            if (!store.payerId) return false;
-            return store.people.filter(p => p.id !== store.payerId).every(p => settledDebtorIds.has(p.id));
-          })()}
+          coveredAmount={summaryCoveredAmount}
+          remaining={summaryRemaining}
+          isBalanced={summaryIsBalanced}
           isOver={isPaymentMode ? false : store.isOver}
           canSubmit={store.isBalanced && store.people.length > 0 && store.total > 0}
           viewMode={store.viewMode}
@@ -139,7 +130,7 @@ export function ExpenseForm() {
       {showCurrencySelector && (
         <CurrencySelector
           currency={store.currency}
-          localCurrency={localCurrencyRef.current}
+          localCurrency={store.currency}
           onSelect={(code) => {
             store.setCurrency(code);
             setShowCurrencySelector(false);
