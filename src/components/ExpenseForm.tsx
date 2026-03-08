@@ -125,18 +125,31 @@ export function ExpenseForm() {
         </header>
       )}
 
-      {/* Receipt title */}
-      <div className="px-4 py-3 border-b border-espresso/8 flex items-center gap-2">
-        <input
-          type="text"
-          value={store.receiptTitle}
-          onChange={(e) => store.setReceiptTitle(e.target.value)}
-          placeholder="Receipt title"
-          className="flex-1 bg-transparent text-base font-semibold text-espresso tracking-tight outline-none placeholder:text-espresso/30 focus:placeholder:text-espresso/20"
-        />
-        {saveStatus === "error" && (
-          <span className="text-xs text-red-400 shrink-0">Save failed</span>
-        )}
+      {/* Receipt title with breadcrumb */}
+      <div className="px-4 py-3 border-b border-espresso/8">
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <button
+            className="text-xs text-espresso/40 hover:text-espresso/60 transition-colors shrink-0"
+            onClick={() => void navigate({ to: "/bills" })}
+          >
+            My Bills
+          </button>
+          <svg className="w-3 h-3 text-espresso/25 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={store.receiptTitle}
+            onChange={(e) => store.setReceiptTitle(e.target.value)}
+            placeholder="Receipt title"
+            className="flex-1 bg-transparent text-base font-semibold text-espresso tracking-tight outline-none placeholder:text-espresso/30 focus:placeholder:text-espresso/20"
+          />
+          {saveStatus === "error" && (
+            <span className="text-xs text-red-400 shrink-0">Save failed</span>
+          )}
+        </div>
       </div>
 
       <ItemsSection
@@ -198,18 +211,6 @@ export function ExpenseForm() {
           {shareStatus === "error" && (
             <p className="mt-2 text-xs text-center text-red-400">Failed to share</p>
           )}
-        </div>
-      )}
-
-      {/* My Bills link */}
-      {!store.inAssignmentMode && (
-        <div className="px-4 pb-2 flex justify-center">
-          <button
-            className="text-sm text-espresso/40 hover:text-espresso/60 transition-colors"
-            onClick={() => void navigate({ to: "/bills" })}
-          >
-            My Bills
-          </button>
         </div>
       )}
 
