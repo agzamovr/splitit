@@ -1,11 +1,17 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listBills, deleteBill, type Bill } from "@/api";
+import { listBills, deleteBill, isWebAuthenticated, type Bill } from "@/api";
 import { formatAmount } from "@/currency";
 import { billKeys } from "@/queryKeys";
 
 export const Route = createFileRoute("/bills")({
+  beforeLoad: () => {
+    const isMiniApp = !!window.Telegram?.WebApp?.initData;
+    if (!isMiniApp && !isWebAuthenticated()) {
+      throw redirect({ to: "/login" });
+    }
+  },
   component: BillsPage,
 });
 
@@ -79,12 +85,13 @@ function BillsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const tg = window.Telegram?.WebApp ?? null;
   const isTgContext = !!window.Telegram?.WebApp?.initData;
+  const isAuthenticated = isTgContext || isWebAuthenticated();
 
   const { data: bills, isLoading } = useQuery({
     queryKey: billKeys.list(),
     queryFn: listBills,
-    enabled: isTgContext,
-    placeholderData: isTgContext ? undefined : [],
+    enabled: isAuthenticated,
+    placeholderData: isAuthenticated ? undefined : [],
   });
 
   const deleteMutation = useMutation({

@@ -25,8 +25,41 @@ export interface BillPayload {
   currency: string;
 }
 
+const SESSION_KEY = "tg_session";
+
+export function saveSessionToken(token: string): void {
+  localStorage.setItem(SESSION_KEY, token);
+}
+
+export function clearSessionToken(): void {
+  localStorage.removeItem(SESSION_KEY);
+}
+
+export function isWebAuthenticated(): boolean {
+  return !!localStorage.getItem(SESSION_KEY);
+}
+
 function authHeader(): string {
-  return `TelegramInitData ${window.Telegram?.WebApp?.initData ?? ""}`;
+  const miniAppData = window.Telegram?.WebApp?.initData;
+  if (miniAppData) return `TelegramInitData ${miniAppData}`;
+  const session = localStorage.getItem(SESSION_KEY);
+  if (session) return `TelegramSession ${session}`;
+  return "";
+}
+
+export function getConfig(): Promise<{ botId: string; botUsername: string }> {
+  return fetch("/api/config").then((r) => r.json() as Promise<{ botId: string; botUsername: string }>);
+}
+
+export function exchangeCode(code: string, code_verifier: string): Promise<{ sessionToken: string }> {
+  return fetch("/api/auth/exchange", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code, code_verifier }),
+  }).then((r) => {
+    if (!r.ok) throw new Error("Exchange failed");
+    return r.json() as Promise<{ sessionToken: string }>;
+  });
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {

@@ -32,5 +32,7 @@ export interface Bill {
 export interface Env {
   SPLIT_BILLS: KVNamespace;
   BOT_TOKEN: string;
+  BOT_ID: string;
+  BOT_USERNAME: string;
   APP_URL: string;
 }

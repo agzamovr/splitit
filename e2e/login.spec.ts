@@ -1,0 +1,247 @@
+import { test, expect } from "@playwright/test";
+import { mockTelegram, mockWebSession, makeBill } from "./helpers";
+
+const MOCK_CONFIG = { botId: "9999", botUsername: "TestBot" };
+
+// ─── /bills redirect guard ────────────────────────────────────────────────────
+
+test.describe("/bills redirect guard", () => {
+  test("unauthenticated browser user is redirected to /login", async ({ page }) => {
+    await page.goto("/bills");
+    await expect(page).toHaveURL("/login");
+  });
+
+  test("Mini App user (Telegram context) reaches /bills without redirect", async ({ page }) => {
+    await mockTelegram(page);
+    await page.route("/api/bills", (route) => route.fulfill({ json: [] }));
+    await page.goto("/bills");
+    await expect(page).toHaveURL("/bills");
+    await expect(page.getByText("No bills yet")).toBeVisible();
+  });
+
+  test("web-authenticated user (session in localStorage) reaches /bills without redirect", async ({
+    page,
+  }) => {
+    await mockWebSession(page);
+    await page.route("/api/bills", (route) => route.fulfill({ json: [] }));
+    await page.goto("/bills");
+    await expect(page).toHaveURL("/bills");
+    await expect(page.getByText("No bills yet")).toBeVisible();
+  });
+
+  test("web-authenticated user sees their bills", async ({ page }) => {
+    await mockWebSession(page);
+    const bill = makeBill({ receiptTitle: "Web Dinner" });
+    await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
+    await page.goto("/bills");
+    await expect(page.getByText("Web Dinner")).toBeVisible();
+  });
+});
+
+// ─── /login page rendering ────────────────────────────────────────────────────
+
+test.describe("/login page — rendering", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route("/api/config", (route) => route.fulfill({ json: MOCK_CONFIG }));
+    await page.goto("/login");
+  });
+
+  test("shows app name heading", async ({ page }) => {
+    await expect(page.getByRole("heading", { name: "splitit" })).toBeVisible();
+  });
+
+  test("shows sign-in description text", async ({ page }) => {
+    await expect(
+      page.getByText("Sign in with Telegram to access your bills"),
+    ).toBeVisible();
+  });
+
+  test("shows 'Continue with Telegram' button", async ({ page }) => {
+    await expect(page.getByRole("button", { name: "Continue with Telegram" })).toBeVisible();
+  });
+
+  test("button is enabled once config loads", async ({ page }) => {
+    await expect(page.getByRole("button", { name: "Continue with Telegram" })).toBeEnabled();
+  });
+});
+
+test.describe("/login page — button disabled while config loading", () => {
+  test("button is disabled while /api/config is pending", async ({ page }) => {
+    let resolveConfig!: () => void;
+    const held = new Promise<void>((res) => { resolveConfig = res; });
+    await page.route("/api/config", async (route) => {
+      await held;
+      await route.fulfill({ json: MOCK_CONFIG });
+    });
+    await page.goto("/login");
+    await expect(page.getByRole("button", { name: "Continue with Telegram" })).toBeDisabled();
+    resolveConfig();
+    await expect(page.getByRole("button", { name: "Continue with Telegram" })).toBeEnabled();
+  });
+});
+
+// ─── /login page — already authenticated ─────────────────────────────────────
+
+test.describe("/login page — already authenticated", () => {
+  test("redirects to /bills if session token already in localStorage", async ({ page }) => {
+    await mockWebSession(page);
+    await page.route("/api/bills", (route) => route.fulfill({ json: [] }));
+    await page.goto("/login");
+    await expect(page).toHaveURL("/bills");
+  });
+});
+
+// ─── /login page — Telegram redirect initiation ───────────────────────────────
+
+test.describe("/login page — login initiation", () => {
+  test("clicking button sends request to oauth.telegram.org with OIDC params", async ({ page }) => {
+    await page.route("/api/config", (route) => route.fulfill({ json: MOCK_CONFIG }));
+    await page.route("https://oauth.telegram.org/**", (route) => route.abort());
+    await page.goto("/login");
+
+    const [request] = await Promise.all([
+      page.waitForRequest((req) => req.url().includes("oauth.telegram.org")),
+      page.getByRole("button", { name: "Continue with Telegram" }).click(),
+    ]);
+
+    const url = new URL(request.url());
+    expect(url.searchParams.get("bot_id")).toBe(MOCK_CONFIG.botId);
+    expect(url.searchParams.get("response_type")).toBe("code");
+    expect(url.searchParams.get("scope")).toContain("openid");
+    expect(url.searchParams.get("code_challenge_method")).toBe("S256");
+    expect(url.searchParams.get("code_challenge")).toBeTruthy();
+    expect(url.searchParams.get("redirect_uri")).toContain("/login");
+  });
+
+});
+
+// ─── /login page — OAuth callback (code exchange) ────────────────────────────
+
+test.describe("/login page — OAuth callback", () => {
+  test("exchanges code and redirects to /bills on success", async ({ page }) => {
+    // Pre-seed pkce_verifier in sessionStorage
+    await page.addInitScript(() => {
+      sessionStorage.setItem("pkce_verifier", "test_verifier_abc");
+    });
+
+    await page.route("/api/config", (route) => route.fulfill({ json: MOCK_CONFIG }));
+    await page.route("/api/auth/exchange", async (route) => {
+      const body = await route.request().postDataJSON() as { code: string; code_verifier: string };
+      if (body.code === "TESTCODE" && body.code_verifier === "test_verifier_abc") {
+        return route.fulfill({ json: { sessionToken: "validtoken.abc123" } });
+      }
+      return route.fulfill({ status: 401, json: { error: "bad" } });
+    });
+    await page.route("/api/bills", (route) => route.fulfill({ json: [] }));
+
+    await page.goto("/login?code=TESTCODE");
+    await expect(page).toHaveURL("/bills");
+
+    // Session token should be persisted
+    const stored = await page.evaluate(() => localStorage.getItem("tg_session"));
+    expect(stored).toBe("validtoken.abc123");
+  });
+
+  test("shows error message when exchange fails", async ({ page }) => {
+    await page.addInitScript(() => {
+      sessionStorage.setItem("pkce_verifier", "test_verifier_abc");
+    });
+
+    await page.route("/api/config", (route) => route.fulfill({ json: MOCK_CONFIG }));
+    await page.route("/api/auth/exchange", (route) =>
+      route.fulfill({ status: 401, json: { error: "Token exchange failed" } }),
+    );
+
+    await page.goto("/login?code=BADCODE");
+    await expect(page.getByText("Sign-in failed. Please try again.")).toBeVisible();
+    await expect(page).toHaveURL("/login");
+  });
+
+  test("removes pkce_verifier from sessionStorage after exchange", async ({ page }) => {
+    await page.addInitScript(() => {
+      sessionStorage.setItem("pkce_verifier", "test_verifier_abc");
+    });
+
+    await page.route("/api/config", (route) => route.fulfill({ json: MOCK_CONFIG }));
+    await page.route("/api/auth/exchange", (route) =>
+      route.fulfill({ json: { sessionToken: "tok.sig" } }),
+    );
+    await page.route("/api/bills", (route) => route.fulfill({ json: [] }));
+
+    await page.goto("/login?code=ANYCODE");
+    await expect(page).toHaveURL("/bills");
+
+    const verifier = await page.evaluate(() => sessionStorage.getItem("pkce_verifier"));
+    expect(verifier).toBeNull();
+  });
+
+  test("cleans ?code= from URL after exchange", async ({ page }) => {
+    await page.addInitScript(() => {
+      sessionStorage.setItem("pkce_verifier", "test_verifier_abc");
+    });
+
+    await page.route("/api/config", (route) => route.fulfill({ json: MOCK_CONFIG }));
+
+    // Make exchange hang so we can check URL before redirect
+    let resolveExchange!: () => void;
+    const held = new Promise<void>((res) => { resolveExchange = res; });
+    await page.route("/api/auth/exchange", async (route) => {
+      await held;
+      await route.fulfill({ json: { sessionToken: "tok.sig" } });
+    });
+
+    await page.goto("/login?code=TESTCODE");
+
+    // While exchange is pending, the ?code= should already be gone
+    await expect(page).toHaveURL("/login");
+
+    resolveExchange();
+    await page.route("/api/bills", (route) => route.fulfill({ json: [] }));
+    await expect(page).toHaveURL("/bills");
+  });
+
+  test("ignores ?code= if pkce_verifier is missing from sessionStorage", async ({ page }) => {
+    // No pkce_verifier seeded — simulates losing the verifier (e.g. tab was closed)
+    await page.route("/api/config", (route) => route.fulfill({ json: MOCK_CONFIG }));
+
+    await page.goto("/login?code=ORPHANCODE");
+
+    // Should stay on /login showing the login button (no crash, no redirect to /bills)
+    await expect(page.getByRole("button", { name: "Continue with Telegram" })).toBeVisible();
+    // URL may still contain ?code= since the early return skips history.replaceState — that's fine
+    await expect(page).not.toHaveURL("/bills");
+  });
+});
+
+// ─── /login page — Telegram Mini App passthrough ─────────────────────────────
+
+test.describe("/login page — Telegram Mini App context", () => {
+  test("Mini App users visiting /login are not redirected (login page is open)", async ({
+    page,
+  }) => {
+    await mockTelegram(page);
+    await page.route("/api/config", (route) => route.fulfill({ json: MOCK_CONFIG }));
+    await page.goto("/login");
+    // The page doesn't auto-redirect Mini App users away from /login
+    // (they can navigate here manually; isWebAuthenticated() is false)
+    await expect(page.getByRole("button", { name: "Continue with Telegram" })).toBeVisible();
+  });
+});
+
+// ─── /bills — web auth sends correct Authorization header ─────────────────────
+
+test.describe("/bills — web-authenticated API calls", () => {
+  test("requests to /api/bills include TelegramSession header", async ({ page }) => {
+    await mockWebSession(page, "mytoken.myhex");
+
+    let authHeader = "";
+    await page.route("/api/bills", (route) => {
+      authHeader = route.request().headers()["authorization"] ?? "";
+      return route.fulfill({ json: [] });
+    });
+
+    await page.goto("/bills");
+    await expect(page.getByText("No bills yet")).toBeVisible();
+    expect(authHeader).toBe("TelegramSession mytoken.myhex");
+  });
+});

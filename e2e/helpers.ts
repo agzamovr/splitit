@@ -1,6 +1,13 @@
 /// <reference path="../src/telegram.d.ts" />
 import type { Page } from "@playwright/test";
 
+/** Inject a fake session token into localStorage so the app treats this as web-authenticated. */
+export async function mockWebSession(page: Page, token = "fakepayload.fakehex") {
+  await page.addInitScript((t) => {
+    localStorage.setItem("tg_session", t);
+  }, token);
+}
+
 /** Inject a mock window.Telegram.WebApp so Telegram-gated features activate. */
 export async function mockTelegram(page: Page, userId = 123, chat?: { id: number; type: string }) {
   // Block the real Telegram script so it can't overwrite our mock

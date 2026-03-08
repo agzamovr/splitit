@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { mockTelegram } from "./helpers";
+import { mockTelegram, mockWebSession } from "./helpers";
 
 // ─── Save indicator ───────────────────────────────────────────────────────────
 
@@ -160,6 +160,8 @@ test.describe("Share button", () => {
 
 test.describe("My Bills breadcrumb", () => {
   test("visible without Telegram context and navigates to /bills", async ({ page }) => {
+    await mockWebSession(page);
+    await page.route("/api/bills", (route) => route.fulfill({ json: [] }));
     await page.goto("/");
     const btn = page.getByRole("button", { name: "My Bills" });
     await expect(btn).toBeVisible();

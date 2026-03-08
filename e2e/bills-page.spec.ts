@@ -1,14 +1,16 @@
 import { test, expect } from "@playwright/test";
-import { mockTelegram, makeBill } from "./helpers";
+import { mockTelegram, mockWebSession, makeBill } from "./helpers";
 
 // ─── Bills list page (/bills) ─────────────────────────────────────────────────
 
-test.describe("/bills page — standalone (no Telegram)", () => {
+test.describe("/bills page — web session (no Telegram)", () => {
   test.beforeEach(async ({ page }) => {
+    await mockWebSession(page);
+    await page.route("/api/bills", (route) => route.fulfill({ json: [] }));
     await page.goto("/bills");
   });
 
-  test("shows 'No bills yet' when no Telegram context", async ({ page }) => {
+  test("shows 'No bills yet' when API returns empty list", async ({ page }) => {
     await expect(page.getByText("No bills yet")).toBeVisible();
   });
 
@@ -301,6 +303,7 @@ test.describe("Bills list — delete per-bill", () => {
 
 test.describe("New Bill button on /bills", () => {
   test("visible and navigates to /", async ({ page }) => {
+    await mockWebSession(page);
     await page.route("/api/bills", (route) => route.fulfill({ json: [] }));
     await page.goto("/bills");
     const btn = page.getByRole("button", { name: "New bill" });
