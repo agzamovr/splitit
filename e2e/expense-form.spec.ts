@@ -362,6 +362,30 @@ test.describe("People management", () => {
   });
 });
 
+test.describe("Summary section visibility", () => {
+  test("Covered and Remaining rows are hidden when no people are added", async ({ page }) => {
+    // Remove all 4 pre-loaded people
+    const removeButtons = page.getByRole("button", { name: "Remove person" });
+    for (let i = 3; i >= 0; i--) {
+      await removeButtons.nth(0).click();
+    }
+    await expect(page.getByText("Covered")).toHaveCount(0);
+    await expect(page.getByText("Remaining")).toHaveCount(0);
+  });
+
+  test("Covered and Remaining rows appear once a person is added", async ({ page }) => {
+    // Remove all pre-loaded people first
+    const removeButtons = page.getByRole("button", { name: "Remove person" });
+    for (let i = 3; i >= 0; i--) {
+      await removeButtons.nth(0).click();
+    }
+    // Add one person
+    await page.getByRole("button", { name: "Add Person" }).click();
+    await expect(page.getByText("Covered")).toBeVisible();
+    await expect(page.getByText("Remaining")).toBeVisible();
+  });
+});
+
 test.describe("Balance badges", () => {
   test.beforeEach(async ({ page }) => {
     await page.getByRole("button", { name: "Amounts" }).click();

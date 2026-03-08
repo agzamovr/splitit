@@ -465,11 +465,51 @@ test.describe("Share button", () => {
     await page.getByRole("button", { name: "Share with Group" }).click();
     await expect(page.getByRole("button", { name: "Sharing…" })).toBeDisabled();
   });
+
+  test("hidden when opened outside a group chat (no initDataUnsafe.chat)", async ({ page }) => {
+    // Override with a mock that has no chat property
+    await page.route("**/telegram-web-app.js", (route) => route.abort());
+    await page.addInitScript((id) => {
+      window.Telegram = {
+        WebApp: {
+          initData: "mock_init_data",
+          initDataUnsafe: { user: { id, first_name: "Test" } },
+          expand() {}, ready() {}, setHeaderColor() {}, setBackgroundColor() {},
+          setBottomBarColor() {}, isVersionAtLeast() { return true; },
+          colorScheme: "light" as const, onEvent() {}, sendData() {}, close() {},
+          BackButton: { show() {}, hide() {}, onClick() {}, offClick() {} },
+        },
+      };
+    }, 123);
+    await page.route("/api/bills", async (route) => {
+      if (route.request().method() === "POST") {
+        await route.fulfill({ json: { billId: "share-bill-id" } });
+      } else {
+        await route.fulfill({ json: [] });
+      }
+    });
+    await page.route("/api/bills/share-bill-id", async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({
+          json: {
+            id: "share-bill-id", creatorTelegramId: 123, version: 1,
+            receiptTitle: "", expenses: [], manualTotal: "100",
+            people: [{ id: "p1", name: "Alice", amount: "100", paid: "" }],
+            assignments: {}, splitMode: "amounts", currency: "USD",
+          },
+        });
+      }
+    });
+    await page.goto("/");
+    // Wait for the bill to load (title input ready), then assert button is absent
+    await expect(page.getByPlaceholder("Receipt title")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("button", { name: "Share with Group" })).toHaveCount(0);
+  });
 });
 
-// ─── "My Bills" link ──────────────────────────────────────────────────────────
+// ─── "My Bills" breadcrumb ────────────────────────────────────────────────────
 
-test.describe("My Bills link", () => {
+test.describe("My Bills breadcrumb", () => {
   test("visible without Telegram context and navigates to /bills", async ({ page }) => {
     await page.goto("/");
     const btn = page.getByRole("button", { name: "My Bills" });
@@ -500,6 +540,17 @@ test.describe("My Bills link", () => {
     await expect(page.getByRole("button", { name: "My Bills" })).toBeVisible({ timeout: 5000 });
     await page.getByRole("button", { name: "My Bills" }).click();
     await expect(page).toHaveURL("/bills");
+  });
+
+  test("appears above the receipt title input", async ({ page }) => {
+    await page.goto("/");
+    const breadcrumb = page.getByRole("button", { name: "My Bills" });
+    const titleInput = page.getByPlaceholder("Receipt title");
+    await expect(breadcrumb).toBeVisible();
+    await expect(titleInput).toBeVisible();
+    const breadcrumbBox = await breadcrumb.boundingBox();
+    const titleBox = await titleInput.boundingBox();
+    expect(breadcrumbBox!.y).toBeLessThan(titleBox!.y);
   });
 });
 
