@@ -32,8 +32,8 @@ export function SummarySection({
   return (
     <>
       {hasPeople && (
-        <div className="border-t border-espresso/8">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-espresso/8">
+        <div className="border-t border-separator">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-separator">
             <span className="text-sm text-espresso-light/60">
               {isSettleMode ? (payerName ? `${payerName}'s Share` : "Everyone's Share") : "Covered"}
             </span>

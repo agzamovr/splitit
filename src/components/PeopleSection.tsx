@@ -30,7 +30,7 @@ export function PeopleSection({
       {isPaymentMode ? (
         // ── Settle mode: single stable <ul>, headers injected as <li> siblings ──
         <>
-          <div className="flex items-center justify-between border-t border-espresso/8 px-4 py-2">
+          <div className="flex items-center justify-between border-t border-separator px-4 py-2">
             <span className="text-xs font-medium text-espresso/40 uppercase tracking-wider">
               {settleSubMode === "own"
                 ? "Who owes"
@@ -89,7 +89,7 @@ export function PeopleSection({
       ) : (
         // ── Consumption mode ──────────────────────────
         <>
-          <div className="flex items-center justify-between px-4 py-2 border-t border-espresso/8">
+          <div className="flex items-center justify-between px-4 py-2 border-t border-separator">
             {store.inItemMode ? (
               <button
                 type="button"
@@ -174,7 +174,7 @@ export function PeopleSection({
           {/* Add Person Button */}
           <button
             onClick={() => setShowPicker(true)}
-            className={`w-full flex items-center gap-2 pl-4 pr-3 py-2.5 border-t border-espresso/8 text-sm font-medium text-terracotta hover:bg-cream-dark/40 transition-all ${store.inAssignmentMode ? "invisible" : ""}`}
+            className={`w-full flex items-center gap-2 pl-4 pr-3 py-2.5 border-t border-separator text-sm font-medium text-terracotta hover:bg-cream-dark/40 transition-all ${store.inAssignmentMode ? "invisible" : ""}`}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />

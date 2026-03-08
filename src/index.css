@@ -1,9 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-display: 'Fraunces', serif;
-  --font-body: 'DM Sans', sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body:    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   --color-cream: #FDF8F3;
   --color-cream-dark: #F5EDE4;
@@ -15,6 +14,10 @@
   --color-sage-light: #A8C5AB;
   --color-amber: #E5A84B;
   --color-amber-light: #F5CC7F;
+  --color-destructive: #C45C3E;
+  --color-button: #C45C3E;
+  --color-button-text: #FFFFFF;
+  --color-separator: oklch(0% 0 0 / 8%);
 }
 
 /* Telegram theme colour overrides */
@@ -26,6 +29,12 @@
   /* bg-white is used for elevated surfaces (active tabs, focused inputs);
      map it to the theme bg so text-espresso stays readable in dark mode */
   --color-white:          var(--tg-theme-bg-color,           #FFFFFF);
+  --color-sage:           var(--tg-theme-accent-text-color,  #7A9E7E);
+  --color-destructive:    var(--tg-theme-destructive-text-color, #C45C3E);
+  --color-button:         var(--tg-theme-button-color,       #C45C3E);
+  --color-button-text:    var(--tg-theme-button-text-color,  #FFFFFF);
+  --color-separator:      var(--tg-theme-section-separator-color,
+                              color-mix(in srgb, var(--color-espresso) 8%, transparent));
 }
 
 /* Safe area insets combining Telegram content insets with device env() fallbacks */
@@ -53,8 +62,8 @@ body {
 /* Input focus glow */
 .input-glow:focus {
   box-shadow:
-    0 0 0 3px rgba(196, 92, 62, 0.15),
-    inset 0 1px 2px rgba(44, 24, 16, 0.06);
+    0 0 0 3px color-mix(in srgb, var(--color-terracotta) 15%, transparent),
+    inset 0 1px 2px color-mix(in srgb, var(--color-espresso) 6%, transparent);
 }
 
 /* Stagger animation for list items */

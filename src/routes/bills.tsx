@@ -136,7 +136,7 @@ function BillsPage() {
   return (
     <div className="min-h-screen bg-cream">
       {/* Header */}
-      <div className="px-4 pt-4 pb-3 border-b border-espresso/8 flex items-center gap-2">
+      <div className="px-4 pt-4 pb-3 border-b border-separator flex items-center gap-2">
         {!tg?.initData && (
           <button
             onClick={() => void navigate({ to: "/" })}

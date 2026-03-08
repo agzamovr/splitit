@@ -51,6 +51,13 @@ export function ExpenseForm() {
 
   const tg = window.Telegram?.WebApp ?? null;
 
+  useEffect(() => {
+    if (!tg) return;
+    tg.setHeaderColor('secondary_bg_color');
+    tg.setBackgroundColor('bg_color');
+    tg.setBottomBarColor('secondary_bg_color');
+  }, []);
+
   // When a specific bill is opened from the bills list, show Telegram back button → /bills
   useEffect(() => {
     if (!tg) return;
@@ -100,7 +107,7 @@ export function ExpenseForm() {
   if (error) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center px-6">
-        <p className="text-red-500 text-sm text-center">{error}</p>
+        <p className="text-destructive text-sm text-center">{error}</p>
       </div>
     );
   }
@@ -118,7 +125,7 @@ export function ExpenseForm() {
     >
       {/* Header – hidden inside Telegram Mini App (Telegram shows its own title bar) */}
       {!tg && (
-        <header className="px-4 py-3 border-b border-espresso/8">
+        <header className="px-4 py-3 border-b border-separator">
           <h1 className="text-base font-semibold text-espresso tracking-tight">
             Split the Bill
           </h1>
@@ -126,7 +133,7 @@ export function ExpenseForm() {
       )}
 
       {/* Receipt title with breadcrumb */}
-      <div className="px-4 py-3 border-b border-espresso/8">
+      <div className="px-4 py-3 border-b border-separator">
         <div className="flex items-center gap-1.5 mb-0.5">
           <button
             className="text-xs text-espresso/40 hover:text-espresso/60 transition-colors shrink-0"
@@ -147,7 +154,7 @@ export function ExpenseForm() {
             className="flex-1 bg-transparent text-base font-semibold text-espresso tracking-tight outline-none placeholder:text-espresso/30 focus:placeholder:text-espresso/20"
           />
           {saveStatus === "error" && (
-            <span className="text-xs text-red-400 shrink-0">Save failed</span>
+            <span className="text-xs text-destructive shrink-0">Save failed</span>
           )}
         </div>
       </div>
@@ -189,7 +196,7 @@ export function ExpenseForm() {
         <div className="px-4 pt-2 pb-4">
           <button
             disabled={shareStatus === "sending"}
-            className="w-full py-3 rounded-xl bg-terracotta text-white font-semibold text-sm disabled:opacity-60"
+            className="w-full py-3 rounded-xl bg-button text-button-text font-semibold text-sm disabled:opacity-60"
             onClick={() => {
               const chatId = tg?.initDataUnsafe?.chat?.id;
               setShareStatus("sending");
@@ -209,7 +216,7 @@ export function ExpenseForm() {
             <p className="mt-2 text-xs text-center text-espresso/50">Open from a group chat to share</p>
           )}
           {shareStatus === "error" && (
-            <p className="mt-2 text-xs text-center text-red-400">Failed to share</p>
+            <p className="mt-2 text-xs text-center text-destructive">Failed to share</p>
           )}
         </div>
       )}

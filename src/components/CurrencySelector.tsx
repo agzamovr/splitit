@@ -106,7 +106,7 @@ export function CurrencySelector({ currency, localCurrency, onSelect, onClose }:
                   </button>
                 );
               })}
-              <div className="mx-4 my-1 border-t border-espresso/8" />
+              <div className="mx-4 my-1 border-t border-separator" />
             </>
           )}
 
