@@ -7,6 +7,7 @@ interface SummarySectionProps {
   isBalanced: boolean;
   isOver: boolean;
   canSubmit: boolean;
+  hasPeople: boolean;
   viewMode: "consumption" | "settle";
   setViewMode: (mode: "consumption" | "settle") => void;
   payerName?: string;
@@ -20,6 +21,7 @@ export function SummarySection({
   isBalanced,
   isOver,
   canSubmit,
+  hasPeople,
   viewMode,
   setViewMode,
   payerName,
@@ -29,53 +31,55 @@ export function SummarySection({
   const symTextClass = getCurrencySymbolClass(sym);
   return (
     <>
-      <div className="border-t border-espresso/8">
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-espresso/8">
-          <span className="text-sm text-espresso-light/60">
-            {isSettleMode ? (payerName ? `${payerName}'s Share` : "Everyone's Share") : "Covered"}
-          </span>
-          <span className="text-sm font-semibold text-sage">
-            <span className={`opacity-60 ${symTextClass}`}>{sym}</span>&thinsp;{formatAmount(coveredAmount, currency)}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between px-4 py-2.5">
-          <span className="text-sm text-espresso-light/60">
-            {isSettleMode ? "To Collect" : "Remaining"}
-          </span>
-          <div className="flex items-center gap-2">
-            <span
-              className={`text-sm font-semibold transition-colors ${
-                isSettleMode
-                  ? "text-sage"
-                  : isBalanced
-                    ? "text-sage"
-                    : isOver
-                      ? "text-terracotta pulse-attention"
-                      : "text-amber pulse-attention"
-              }`}
-            >
-              {isOver && !isSettleMode ? "+" : ""}<span className={`opacity-60 ${symTextClass}`}>{sym}</span>&thinsp;{formatAmount(Math.abs(remaining), currency)}
+      {hasPeople && (
+        <div className="border-t border-espresso/8">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-espresso/8">
+            <span className="text-sm text-espresso-light/60">
+              {isSettleMode ? (payerName ? `${payerName}'s Share` : "Everyone's Share") : "Covered"}
             </span>
-            {isBalanced ? (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-sage bg-sage/10 rounded-full">
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                {isSettleMode ? "Collected" : "Balanced"}
+            <span className="text-sm font-semibold text-sage">
+              <span className={`opacity-60 ${symTextClass}`}>{sym}</span>&thinsp;{formatAmount(coveredAmount, currency)}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <span className="text-sm text-espresso-light/60">
+              {isSettleMode ? "To Collect" : "Remaining"}
+            </span>
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-sm font-semibold transition-colors ${
+                  isSettleMode
+                    ? "text-sage"
+                    : isBalanced
+                      ? "text-sage"
+                      : isOver
+                        ? "text-terracotta pulse-attention"
+                        : "text-amber pulse-attention"
+                }`}
+              >
+                {isOver && !isSettleMode ? "+" : ""}<span className={`opacity-60 ${symTextClass}`}>{sym}</span>&thinsp;{formatAmount(Math.abs(remaining), currency)}
               </span>
-            ) : isOver && !isSettleMode ? (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-terracotta bg-terracotta/10 rounded-full">
-                Over
-              </span>
-            ) : !isSettleMode ? (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-amber bg-amber/10 rounded-full">
-                Remaining
-              </span>
-            ) : null}
+              {isBalanced ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-sage bg-sage/10 rounded-full">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  {isSettleMode ? "Collected" : "Balanced"}
+                </span>
+              ) : isOver && !isSettleMode ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-terracotta bg-terracotta/10 rounded-full">
+                  Over
+                </span>
+              ) : !isSettleMode ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-amber bg-amber/10 rounded-full">
+                  Remaining
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="px-4 mt-4">
         <div className="flex gap-0.5 bg-cream-dark/50 rounded-lg p-0.5">

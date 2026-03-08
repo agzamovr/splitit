@@ -164,6 +164,7 @@ export function ExpenseForm() {
           remaining={summaryRemaining}
           isBalanced={summaryIsBalanced}
           isOver={isPaymentMode ? false : store.isOver}
+          hasPeople={store.people.length > 0}
           canSubmit={store.isBalanced && store.people.length > 0 && store.total > 0}
           viewMode={store.viewMode}
           setViewMode={store.setViewMode}
