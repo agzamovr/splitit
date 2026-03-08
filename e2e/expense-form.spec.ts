@@ -49,12 +49,12 @@ test.describe("Initial state", () => {
     await expect(amountInputs.nth(3)).toHaveValue("");
   });
 
-  test("displays correct avatar initials", async ({ page }) => {
-    const avatars = page.locator(".rounded-full.bg-gradient-to-br");
-    await expect(avatars.nth(0)).toHaveText("R");
-    await expect(avatars.nth(1)).toHaveText("D");
-    await expect(avatars.nth(2)).toHaveText("A");
-    await expect(avatars.nth(3)).toHaveText("F");
+  test("no avatar focus buttons for pre-loaded sample people (no telegramId)", async ({ page }) => {
+    // Avatar buttons ("Assign expenses to this person") only render for people with telegramId.
+    // Sample people have none, so there should be zero such buttons.
+    await expect(
+      page.getByRole("button", { name: "Assign expenses to this person" })
+    ).toHaveCount(0);
   });
 
   test("shows editable manual total input", async ({ page }) => {
@@ -313,19 +313,20 @@ test.describe("Expense items", () => {
 });
 
 test.describe("People management", () => {
-  test("adding a person shows ? avatar", async ({ page }) => {
+  test("adding a person via picker adds them to the list", async ({ page }) => {
     await page.getByRole("button", { name: "Add Person" }).click();
+    await page.getByPlaceholder("Enter a name…").fill("Bella");
+    await page.keyboard.press("Enter");
 
-    const avatars = page.locator(".rounded-full.bg-gradient-to-br");
-    await expect(avatars.nth(4)).toHaveText("?");
+    const nameInputs = page.getByPlaceholder("Name");
+    await expect(nameInputs).toHaveCount(5);
+    await expect(nameInputs.nth(4)).toHaveValue("Bella");
   });
 
-  test("editing name updates avatar initial", async ({ page }) => {
+  test("name input is editable", async ({ page }) => {
     const nameInputs = page.getByPlaceholder("Name");
     await nameInputs.nth(0).fill("Bella");
-
-    const avatars = page.locator(".rounded-full.bg-gradient-to-br");
-    await expect(avatars.nth(0)).toHaveText("B");
+    await expect(nameInputs.nth(0)).toHaveValue("Bella");
   });
 
   test("editing person amount updates covered total", async ({ page }) => {
@@ -379,8 +380,10 @@ test.describe("Summary section visibility", () => {
     for (let i = 3; i >= 0; i--) {
       await removeButtons.nth(0).click();
     }
-    // Add one person
+    // Add one person via picker
     await page.getByRole("button", { name: "Add Person" }).click();
+    await page.getByPlaceholder("Enter a name…").fill("Someone");
+    await page.keyboard.press("Enter");
     await expect(page.getByText("Covered")).toBeVisible();
     await expect(page.getByText("Remaining")).toBeVisible();
   });
@@ -465,13 +468,13 @@ test.describe("Full workflow", () => {
         .click();
     }
 
-    // Add two people
+    // Add two people via picker
     await page.getByRole("button", { name: "Add Person" }).click();
+    await page.getByPlaceholder("Enter a name…").fill("Alice");
+    await page.keyboard.press("Enter");
     await page.getByRole("button", { name: "Add Person" }).click();
-
-    const nameInputs = page.getByPlaceholder("Name");
-    await nameInputs.nth(0).fill("Alice");
-    await nameInputs.nth(1).fill("Bob");
+    await page.getByPlaceholder("Enter a name…").fill("Bob");
+    await page.keyboard.press("Enter");
 
     // Add two expenses
     await page.getByRole("button", { name: "Add expense" }).click();
@@ -516,13 +519,13 @@ test.describe("Full workflow", () => {
         .click();
     }
 
-    // Add two people
+    // Add two people via picker
     await page.getByRole("button", { name: "Add Person" }).click();
+    await page.getByPlaceholder("Enter a name…").fill("Alice");
+    await page.keyboard.press("Enter");
     await page.getByRole("button", { name: "Add Person" }).click();
-
-    const nameInputs = page.getByPlaceholder("Name");
-    await nameInputs.nth(0).fill("Alice");
-    await nameInputs.nth(1).fill("Bob");
+    await page.getByPlaceholder("Enter a name…").fill("Bob");
+    await page.keyboard.press("Enter");
 
     // Add two expenses
     await page.getByRole("button", { name: "Add expense" }).click();
@@ -970,13 +973,22 @@ test.describe("Item count per person", () => {
     // All 4 people assigned to both items by default
     await expect(personRows.nth(0)).toContainText("2 items");
 
-    // Enter person mode for Rus via the avatar button
-    await page.getByRole("button", { name: "Assign expenses to this person" }).first().click();
-    // In person mode, expense rows become "Untitled" toggle-buttons (only visible in this mode)
-    // Click the first expense to deassign Rus from it
-    await page.getByRole("button", { name: /Untitled/i }).first().click();
-    // Exit person mode
-    await page.getByRole("button", { name: "Assign expenses to this person" }).first().click();
+    // Enter item mode for the first expense.
+    // Pre-focus the button first so the layout shift from onFocus doesn't interrupt the click.
+    const assignBtn1 = page.getByRole("button", { name: "Assign people to this expense" }).first();
+    await assignBtn1.focus();
+    await assignBtn1.click();
+    // Verify item mode is active (Deselect All button appears in people section header)
+    await expect(page.getByRole("button", { name: "Deselect All" })).toBeVisible();
+    // In item mode, use Deselect All then re-select Don/Art/Faz, leaving Rus deselected
+    await page.getByRole("button", { name: "Deselect All" }).click();
+    // Re-select Don, Art, Faz (all except Rus — the first person)
+    await page.locator("ul").last().locator("li").nth(1).locator("button").click();
+    await page.locator("ul").last().locator("li").nth(2).locator("button").click();
+    await page.locator("ul").last().locator("li").nth(3).locator("button").click();
+    // Exit item mode (pre-focus to avoid layout-shift click miss)
+    await assignBtn1.focus();
+    await assignBtn1.click();
 
     // Rus is now only in 1 item
     await expect(personRows.nth(0)).toContainText("1 item");

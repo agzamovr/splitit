@@ -72,3 +72,28 @@ export function deleteBill(id: string): Promise<void> {
 export function deleteAllBills(): Promise<void> {
   return apiFetch("/api/bills", { method: "DELETE" });
 }
+
+export interface ChatMember {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+}
+
+export function getChatMembers(): Promise<{ members: ChatMember[] }> {
+  return apiFetch("/api/members");
+}
+
+export interface KnownPerson {
+  name: string;
+  telegramId?: number;
+  photoUrl?: string;
+}
+
+export function getKnownPeople(): Promise<{ people: KnownPerson[] }> {
+  return apiFetch("/api/people");
+}
+
+export function saveKnownPerson(person: KnownPerson): Promise<void> {
+  return apiFetch("/api/people", { method: "POST", body: JSON.stringify(person) });
+}

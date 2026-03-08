@@ -3,3 +3,11 @@ export const billKeys = {
   list: () => [...billKeys.all, 'list'] as const,
   detail: (id: string) => [...billKeys.all, 'detail', id] as const,
 };
+
+export const memberKeys = {
+  chat: () => ['members', 'chat'] as const,
+};
+
+export const peopleKeys = {
+  known: () => ['people', 'known'] as const,
+};

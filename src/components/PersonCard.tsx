@@ -212,16 +212,18 @@ function PersonCardConsumptionEdit({
           ? "bg-sage/5 border-l-2 border-l-sage pl-[14px]"
           : ""
       }`}>
-        <button
-          type="button"
-          onClick={onPersonFocus}
-          className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-sage-light to-sage flex items-center justify-center text-white font-semibold text-xs shadow-sm hover:ring-2 hover:ring-sage/50 transition-all cursor-pointer overflow-hidden"
-          aria-label="Assign expenses to this person"
-        >
-          {person.photoUrl && !avatarFailed
-            ? <img src={person.photoUrl} onError={() => setAvatarFailed(true)} className="w-full h-full object-cover" alt={person.name} />
-            : (person.name ? person.name[0].toUpperCase() : "?")}
-        </button>
+        {person.telegramId != null && (
+          <button
+            type="button"
+            onClick={onPersonFocus}
+            className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-sage-light to-sage flex items-center justify-center text-white font-semibold text-xs shadow-sm hover:ring-2 hover:ring-sage/50 transition-all cursor-pointer overflow-hidden"
+            aria-label="Assign expenses to this person"
+          >
+            {person.photoUrl && !avatarFailed
+              ? <img src={person.photoUrl} onError={() => setAvatarFailed(true)} className="w-full h-full object-cover" alt={person.name} />
+              : (person.name ? person.name[0].toUpperCase() : "?")}
+          </button>
+        )}
 
         <input
           ref={inputRef}

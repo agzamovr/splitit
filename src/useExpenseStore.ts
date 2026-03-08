@@ -194,20 +194,16 @@ export function useExpenseStore() {
     );
   };
 
-  const addPerson = () => {
-    const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-    const alreadyAdded = tgUser ? people.some(p => p.telegramId === tgUser.id) : true;
-    const name = !alreadyAdded
-      ? [tgUser!.first_name, tgUser!.last_name].filter(Boolean).join(" ")
-      : "";
+  const addPerson = (init?: { name?: string; telegramId?: number; photoUrl?: string }) => {
     const newPerson: Person = {
       id: genId(),
-      name,
+      name: init?.name ?? "",
       amount: "",
       paid: "",
-      ...(tgUser ? { telegramId: tgUser.id, photoUrl: tgUser.photo_url } : {}),
+      ...(init?.telegramId != null ? { telegramId: init.telegramId } : {}),
+      ...(init?.photoUrl ? { photoUrl: init.photoUrl } : {}),
     };
-    focusNewId.current = newPerson.id;
+    if (!init?.name) focusNewId.current = newPerson.id;
     setPeople((prev) => [...prev, newPerson]);
     setAssignments((prev) => {
       const next = { ...prev };

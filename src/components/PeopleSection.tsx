@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useExpenseStore } from "../useExpenseStore";
 import { PersonCard } from "./PersonCard";
+import { PersonPicker } from "./PersonPicker";
 
 interface PeopleSectionProps {
   store: ReturnType<typeof useExpenseStore>;
@@ -16,6 +18,7 @@ export function PeopleSection({
   settleSubMode,
   handleSettleSubModeChange,
 }: PeopleSectionProps) {
+  const [showPicker, setShowPicker] = useState(false);
   const isPaymentMode = store.viewMode === "settle";
   const payer = store.payerId ? store.people.find(p => p.id === store.payerId) ?? null : null;
   const settleOrder = isPaymentMode && payer
@@ -170,7 +173,7 @@ export function PeopleSection({
 
           {/* Add Person Button */}
           <button
-            onClick={store.addPerson}
+            onClick={() => setShowPicker(true)}
             className={`w-full flex items-center gap-2 pl-4 pr-3 py-2.5 border-t border-espresso/8 text-sm font-medium text-terracotta hover:bg-cream-dark/40 transition-all ${store.inAssignmentMode ? "invisible" : ""}`}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -178,6 +181,15 @@ export function PeopleSection({
             </svg>
             Add Person
           </button>
+
+          {showPicker && (
+            <PersonPicker
+              existingTelegramIds={new Set(store.people.map(p => p.telegramId).filter((id): id is number => id != null))}
+              existingNames={new Set(store.people.filter(p => p.telegramId == null).map(p => p.name.toLowerCase()))}
+              onAdd={(init) => store.addPerson(init)}
+              onClose={() => setShowPicker(false)}
+            />
+          )}
         </>
       )}
     </div>
