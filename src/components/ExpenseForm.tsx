@@ -171,7 +171,7 @@ export function ExpenseForm() {
       )}
 
       {/* Share button — Telegram only, creator only, not in assignment mode */}
-      {tg && billId && isCreator && !store.inAssignmentMode && (
+      {tg && billId && isCreator && !store.inAssignmentMode && !!tg.initDataUnsafe?.chat && (
         <div className="px-4 pt-2 pb-4">
           <button
             disabled={shareStatus === "sending"}

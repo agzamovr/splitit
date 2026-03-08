@@ -1,16 +1,17 @@
+/// <reference path="../src/telegram.d.ts" />
 import { test, expect, type Page } from "@playwright/test";
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
 
 /** Inject a mock window.Telegram.WebApp so Telegram-gated features activate. */
-async function mockTelegram(page: Page, userId = 123) {
+async function mockTelegram(page: Page, userId = 123, chat?: { id: number; type: string }) {
   // Block the real Telegram script so it can't overwrite our mock
   await page.route("**/telegram-web-app.js", (route) => route.abort());
-  await page.addInitScript((id) => {
+  await page.addInitScript(({ id, chat }) => {
     window.Telegram = {
       WebApp: {
         initData: "mock_init_data",
-        initDataUnsafe: { user: { id, first_name: "Test" } },
+        initDataUnsafe: { user: { id, first_name: "Test" }, chat },
         expand() {},
         ready() {},
         setHeaderColor() {},
@@ -24,7 +25,7 @@ async function mockTelegram(page: Page, userId = 123) {
         BackButton: { show() {}, hide() {}, onClick() {}, offClick() {} },
       },
     };
-  }, userId);
+  }, { id: userId, chat });
 }
 
 type DeepPartial<T> = { [K in keyof T]?: T[K] };
@@ -396,7 +397,7 @@ test.describe("Save indicator", () => {
 
 test.describe("Share button", () => {
   test.beforeEach(async ({ page }) => {
-    await mockTelegram(page);
+    await mockTelegram(page, 123, { id: 1, type: "group" });
     await page.route("/api/bills", async (route) => {
       if (route.request().method() === "POST") {
         await route.fulfill({ json: { billId: "share-bill-id" } });
@@ -557,7 +558,7 @@ test.describe("Back button from bill to /bills", () => {
 
     await page.goto("/?billId=bill-from-list");
     // Trigger the Telegram back button
-    await page.evaluate(() => (window as unknown as Record<string, unknown>).__triggerBack?.());
+    await page.evaluate(() => (window as unknown as { __triggerBack?: () => void }).__triggerBack?.());
     await expect(page).toHaveURL("/bills");
   });
 });
