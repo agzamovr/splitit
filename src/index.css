@@ -53,11 +53,11 @@
 /* System dark mode (web / non-Telegram context) */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-cream:          var(--tg-theme-bg-color,           #1E1008);
-    --color-cream-dark:     var(--tg-theme-secondary-bg-color, #2A1A0E);
-    --color-espresso:       var(--tg-theme-text-color,         #F0E6DC);
-    --color-espresso-light: var(--tg-theme-hint-color,         #9A7A6A);
-    --color-white:          var(--tg-theme-bg-color,           #2A1A0E);
+    --color-cream:          var(--tg-theme-bg-color,           #18181b); /* zinc-900 */
+    --color-cream-dark:     var(--tg-theme-secondary-bg-color, #27272a); /* zinc-800 */
+    --color-espresso:       var(--tg-theme-text-color,         #f4f4f5); /* zinc-100 */
+    --color-espresso-light: var(--tg-theme-hint-color,         #a1a1aa); /* zinc-400 */
+    --color-white:          var(--tg-theme-bg-color,           #27272a); /* zinc-800 – elevated surfaces */
   }
 }
 
