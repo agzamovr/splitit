@@ -4,6 +4,7 @@ async function addPersonViaPicker(page: Page, name: string) {
   await page.getByRole("button", { name: "Add Person" }).click();
   await page.getByPlaceholder("Enter a name…").fill(name);
   await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Done" }).click();
 }
 
 test.beforeEach(async ({ page }) => {
@@ -37,6 +38,18 @@ test.describe("PersonPicker — opening and closing", () => {
     // Picker remains open — empty input should not add or dismiss
     await expect(pickerInput).toBeVisible();
   });
+
+  test("Done button closes the picker", async ({ page }) => {
+    await page.getByRole("button", { name: "Add Person" }).click();
+    await expect(page.getByPlaceholder("Enter a name…")).toBeVisible();
+    await page.getByRole("button", { name: "Done" }).click();
+    await expect(page.getByPlaceholder("Enter a name…")).not.toBeVisible();
+  });
+
+  test("Done button is visible when picker opens", async ({ page }) => {
+    await page.getByRole("button", { name: "Add Person" }).click();
+    await expect(page.getByRole("button", { name: "Done" })).toBeVisible();
+  });
 });
 
 test.describe("PersonPicker — adding a custom person", () => {
@@ -46,27 +59,88 @@ test.describe("PersonPicker — adding a custom person", () => {
     await expect(page.getByText('Add "Charlie"')).toBeVisible();
   });
 
-  test("pressing Enter with a typed name adds the person and closes the picker", async ({ page }) => {
-    await addPersonViaPicker(page, "Charlie");
+  test("pressing Enter with a typed name adds the person and keeps picker open", async ({ page }) => {
+    await page.getByRole("button", { name: "Add Person" }).click();
+    await page.getByPlaceholder("Enter a name…").fill("Charlie");
+    await page.keyboard.press("Enter");
 
-    await expect(page.getByPlaceholder("Enter a name…")).not.toBeVisible();
+    // Picker stays open
+    await expect(page.getByPlaceholder("Enter a name…")).toBeVisible();
+    // Person was added (visible after closing)
+    await page.getByRole("button", { name: "Done" }).click();
     const nameInputs = page.getByPlaceholder("Name");
     await expect(nameInputs).toHaveCount(5);
     await expect(nameInputs.nth(4)).toHaveValue("Charlie");
   });
 
-  test("clicking the 'Add [name]' row adds the person and closes the picker", async ({ page }) => {
+  test("clicking the 'Add [name]' row adds the person and keeps picker open", async ({ page }) => {
     await page.getByRole("button", { name: "Add Person" }).click();
     await page.getByPlaceholder("Enter a name…").fill("Dana");
     await page.getByText('Add "Dana"').click();
 
-    await expect(page.getByPlaceholder("Enter a name…")).not.toBeVisible();
+    // Picker stays open
+    await expect(page.getByPlaceholder("Enter a name…")).toBeVisible();
+    await page.getByRole("button", { name: "Done" }).click();
     const nameInputs = page.getByPlaceholder("Name");
     await expect(nameInputs).toHaveCount(5);
     await expect(nameInputs.nth(4)).toHaveValue("Dana");
   });
 
-  test("the picker can be opened and used multiple times sequentially", async ({ page }) => {
+  test("input is cleared after adding a custom name so the next name can be typed", async ({ page }) => {
+    await page.getByRole("button", { name: "Add Person" }).click();
+    await page.getByPlaceholder("Enter a name…").fill("Charlie");
+    await page.keyboard.press("Enter");
+
+    // Input should be empty, ready for the next name
+    await expect(page.getByPlaceholder("Enter a name…")).toHaveValue("");
+  });
+
+  test("person added via picker (no telegramId) has no avatar focus button", async ({ page }) => {
+    await addPersonViaPicker(page, "Eve");
+    // Avatar button ("Assign expenses to this person") only renders for telegramId people
+    await expect(page.getByRole("button", { name: "Assign expenses to this person" })).toHaveCount(0);
+  });
+});
+
+test.describe("PersonPicker — multi-add (picker stays open)", () => {
+  test("can add multiple people in one picker session", async ({ page }) => {
+    await page.getByRole("button", { name: "Add Person" }).click();
+    const pickerInput = page.getByPlaceholder("Enter a name…");
+
+    await pickerInput.fill("Alice");
+    await page.keyboard.press("Enter");
+    await pickerInput.fill("Bob");
+    await page.keyboard.press("Enter");
+    await pickerInput.fill("Carol");
+    await page.keyboard.press("Enter");
+
+    await page.getByRole("button", { name: "Done" }).click();
+
+    const nameInputs = page.getByPlaceholder("Name");
+    await expect(nameInputs).toHaveCount(7);
+    await expect(nameInputs.nth(4)).toHaveValue("Alice");
+    await expect(nameInputs.nth(5)).toHaveValue("Bob");
+    await expect(nameInputs.nth(6)).toHaveValue("Carol");
+  });
+
+  test("clicking 'Add [name]' row multiple times in one session adds all people", async ({ page }) => {
+    await page.getByRole("button", { name: "Add Person" }).click();
+    const pickerInput = page.getByPlaceholder("Enter a name…");
+
+    await pickerInput.fill("Alice");
+    await page.getByText('Add "Alice"').click();
+    await pickerInput.fill("Bob");
+    await page.getByText('Add "Bob"').click();
+
+    await page.getByRole("button", { name: "Done" }).click();
+
+    const nameInputs = page.getByPlaceholder("Name");
+    await expect(nameInputs).toHaveCount(6);
+    await expect(nameInputs.nth(4)).toHaveValue("Alice");
+    await expect(nameInputs.nth(5)).toHaveValue("Bob");
+  });
+
+  test("the picker can still be opened and used multiple times sequentially", async ({ page }) => {
     await addPersonViaPicker(page, "Alice");
     await addPersonViaPicker(page, "Bob");
 
@@ -76,10 +150,21 @@ test.describe("PersonPicker — adding a custom person", () => {
     await expect(nameInputs.nth(5)).toHaveValue("Bob");
   });
 
-  test("person added via picker (no telegramId) has no avatar focus button", async ({ page }) => {
-    await addPersonViaPicker(page, "Eve");
-    // Avatar button ("Assign expenses to this person") only renders for telegramId people
-    await expect(page.getByRole("button", { name: "Assign expenses to this person" })).toHaveCount(0);
+  test("backdrop click closes picker mid-session, keeping already-added people", async ({ page }) => {
+    await page.getByRole("button", { name: "Add Person" }).click();
+    const pickerInput = page.getByPlaceholder("Enter a name…");
+
+    await pickerInput.fill("Alice");
+    await page.keyboard.press("Enter");
+
+    // Dismiss via backdrop without clicking Done
+    await page.mouse.click(10, 10);
+    await expect(pickerInput).not.toBeVisible();
+
+    // Alice was still added
+    const nameInputs = page.getByPlaceholder("Name");
+    await expect(nameInputs).toHaveCount(5);
+    await expect(nameInputs.nth(4)).toHaveValue("Alice");
   });
 });
 

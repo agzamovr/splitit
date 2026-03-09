@@ -167,7 +167,6 @@ export function PersonPicker({ existingTelegramIds, existingNames, onAdd, onClos
     const photoUrl = tgUser?.id === member.id ? tgUser.photo_url : undefined;
     saveMutation.mutate({ name, telegramId: member.id, photoUrl });
     onAdd({ name, telegramId: member.id, photoUrl });
-    onClose();
   };
 
   const handleSelectKnown = (person: KnownPerson) => {
@@ -175,14 +174,13 @@ export function PersonPicker({ existingTelegramIds, existingNames, onAdd, onClos
     if (person.telegramId == null && existingNames.has(person.name.toLowerCase())) return;
     saveMutation.mutate(person); // bumps to top of recency
     onAdd({ name: person.name, telegramId: person.telegramId, photoUrl: person.photoUrl });
-    onClose();
   };
 
   const handleAddCustom = () => {
     if (!inputTrimmed) return;
     saveMutation.mutate({ name: inputTrimmed });
     onAdd({ name: inputTrimmed });
-    onClose();
+    setInputText("");
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -309,6 +307,17 @@ export function PersonPicker({ existingTelegramIds, existingNames, onAdd, onClos
               )}
             </ul>
           )}
+        </div>
+
+        {/* Done button */}
+        <div className="flex-shrink-0 px-4 py-3 border-t border-espresso/10">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full py-3 rounded-xl bg-button text-button-text font-semibold text-sm"
+          >
+            Done
+          </button>
         </div>
       </div>
     </div>
