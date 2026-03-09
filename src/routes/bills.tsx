@@ -78,6 +78,23 @@ function TrashIcon() {
   );
 }
 
+function UserChip({ name, photoUrl }: { name: string; photoUrl?: string }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  return (
+    <div className="flex items-center gap-1.5">
+      {photoUrl && !imgFailed ? (
+        <img src={photoUrl} onError={() => setImgFailed(true)} alt={name}
+          className="w-7 h-7 rounded-full object-cover" />
+      ) : (
+        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-sage-light to-sage flex items-center justify-center text-white text-xs font-semibold">
+          {name[0].toUpperCase()}
+        </div>
+      )}
+      <span className="text-sm font-medium text-espresso leading-none">{name}</span>
+    </div>
+  );
+}
+
 function BillsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -85,7 +102,13 @@ function BillsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const tg = window.Telegram?.WebApp ?? null;
   const isTgContext = !!window.Telegram?.WebApp?.initData;
+  const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user ?? null;
   const isAuthenticated = isTgContext || isWebAuthenticated();
+
+  const devUser = import.meta.env.DEV && !isTgContext
+    ? { first_name: "Dev", photo_url: undefined as string | undefined }
+    : null;
+  const displayUser = tgUser ?? devUser;
 
   const { data: bills, isLoading } = useQuery({
     queryKey: billKeys.list(),
@@ -143,49 +166,51 @@ function BillsPage() {
   return (
     <div className="min-h-screen bg-cream">
       {/* Header */}
-      <div className="px-4 pt-4 pb-3 border-b border-separator flex items-center gap-2">
-        {!tg?.initData && (
-          <button
-            onClick={() => void navigate({ to: "/" })}
-            className="text-sm text-espresso/50 hover:text-espresso mr-1"
-          >
-            ← Back
-          </button>
-        )}
-        <h1 className="text-base font-semibold text-espresso tracking-tight flex-1">My Bills</h1>
-
-        {!isTgContext && (
-          <button
-            onClick={() => { clearSessionToken(); window.location.href = "/login"; }}
-            className="text-xs text-espresso/40 hover:text-espresso/70 transition-colors"
-          >
-            Sign out
-          </button>
-        )}
-
-        {/* Filter toggle */}
-        <div className="flex gap-1 bg-espresso/8 rounded-lg p-1 text-xs">
-          {(["all", "uncollected", "unbalanced"] as const).map((f) => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={`px-3 py-1 rounded-md font-medium transition-colors ${
-                filter === f ? "bg-white text-espresso shadow-sm" : "text-espresso/50"
-              }`}>
-              {f === "all" ? "All" : f === "uncollected" ? "Unpaid" : "Unbalanced"}
+      <div className="px-4 pt-3 pb-3 border-b border-separator">
+        {/* Top row: User info / sign-out + New Bill */}
+        <div className="flex items-center justify-between mb-2">
+          {/* Left: avatar+name (TG or dev) OR sign-out icon (web prod) */}
+          {displayUser ? (
+            <UserChip name={displayUser.first_name} photoUrl={displayUser.photo_url} />
+          ) : (
+            <button
+              onClick={() => { clearSessionToken(); window.location.href = "/login"; }}
+              className="w-7 h-7 flex items-center justify-center text-espresso/40 hover:text-espresso/70 transition-colors"
+              title="Sign out"
+              aria-label="Sign out"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
+              </svg>
             </button>
-          ))}
-        </div>
+          )}
 
-        {/* New Bill */}
-        <button
-          onClick={() => { window.location.href = "/"; }}
-          className="w-7 h-7 rounded-full bg-terracotta/10 text-terracotta hover:bg-terracotta/20 active:bg-terracotta/30 flex items-center justify-center transition-colors"
-          title="New bill"
-          aria-label="New bill"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
+          {/* Right: New Bill only */}
+          <button
+            onClick={() => { window.location.href = "/"; }}
+            className="w-7 h-7 rounded-full bg-terracotta/10 text-terracotta hover:bg-terracotta/20 active:bg-terracotta/30 flex items-center justify-center transition-colors"
+            title="New bill" aria-label="New bill"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        </div>
+        {/* Bottom row: Title + Filter */}
+        <div className="flex items-center gap-2">
+          <h1 className="text-base font-semibold text-espresso tracking-tight flex-1">My Bills</h1>
+          <div className="flex gap-1 bg-espresso/8 rounded-lg p-1 text-xs">
+            {(["all", "uncollected", "unbalanced"] as const).map((f) => (
+              <button key={f} onClick={() => setFilter(f)}
+                className={`px-3 py-1 rounded-md font-medium transition-colors ${
+                  filter === f ? "bg-white text-espresso shadow-sm" : "text-espresso/50"
+                }`}>
+                {f === "all" ? "All" : f === "uncollected" ? "Unpaid" : "Unbalanced"}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* List */}
