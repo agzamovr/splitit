@@ -30,7 +30,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   const file = formData.get("image");
-  if (!(file instanceof File)) {
+  if (!(file instanceof Blob)) {
     return json({ error: "Missing image field" }, 400);
   }
 

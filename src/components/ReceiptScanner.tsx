@@ -70,7 +70,8 @@ export function ReceiptScanner({ store, onClose }: Props) {
     try {
       const resized = await resizeImage(file);
       const formData = new FormData();
-      formData.append("image", resized, "receipt.jpg");
+      const imageFile = new File([resized], "receipt.jpg", { type: "image/jpeg" });
+      formData.append("image", imageFile);
 
       const res = await fetch("/api/parse-receipt", {
         method: "POST",
