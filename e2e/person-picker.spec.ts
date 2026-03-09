@@ -26,8 +26,8 @@ test.describe("PersonPicker — opening and closing", () => {
     // Click top-left corner — above the bottom sheet, on the backdrop
     await page.mouse.click(10, 10);
     await expect(page.getByPlaceholder("Enter a name…")).not.toBeVisible();
-    // Still only 4 sample people
-    await expect(page.getByPlaceholder("Name")).toHaveCount(4);
+    // No people were added
+    await expect(page.getByPlaceholder("Name")).toHaveCount(0);
   });
 
   test("pressing Enter with empty input does not close the picker", async ({ page }) => {
@@ -69,8 +69,8 @@ test.describe("PersonPicker — adding a custom person", () => {
     // Person was added (visible after closing)
     await page.getByRole("button", { name: "Done" }).click();
     const nameInputs = page.getByPlaceholder("Name");
-    await expect(nameInputs).toHaveCount(5);
-    await expect(nameInputs.nth(4)).toHaveValue("Charlie");
+    await expect(nameInputs).toHaveCount(1);
+    await expect(nameInputs.nth(0)).toHaveValue("Charlie");
   });
 
   test("clicking the 'Add [name]' row adds the person and keeps picker open", async ({ page }) => {
@@ -82,8 +82,8 @@ test.describe("PersonPicker — adding a custom person", () => {
     await expect(page.getByPlaceholder("Enter a name…")).toBeVisible();
     await page.getByRole("button", { name: "Done" }).click();
     const nameInputs = page.getByPlaceholder("Name");
-    await expect(nameInputs).toHaveCount(5);
-    await expect(nameInputs.nth(4)).toHaveValue("Dana");
+    await expect(nameInputs).toHaveCount(1);
+    await expect(nameInputs.nth(0)).toHaveValue("Dana");
   });
 
   test("input is cleared after adding a custom name so the next name can be typed", async ({ page }) => {
@@ -117,10 +117,10 @@ test.describe("PersonPicker — multi-add (picker stays open)", () => {
     await page.getByRole("button", { name: "Done" }).click();
 
     const nameInputs = page.getByPlaceholder("Name");
-    await expect(nameInputs).toHaveCount(7);
-    await expect(nameInputs.nth(4)).toHaveValue("Alice");
-    await expect(nameInputs.nth(5)).toHaveValue("Bob");
-    await expect(nameInputs.nth(6)).toHaveValue("Carol");
+    await expect(nameInputs).toHaveCount(3);
+    await expect(nameInputs.nth(0)).toHaveValue("Alice");
+    await expect(nameInputs.nth(1)).toHaveValue("Bob");
+    await expect(nameInputs.nth(2)).toHaveValue("Carol");
   });
 
   test("clicking 'Add [name]' row multiple times in one session adds all people", async ({ page }) => {
@@ -135,9 +135,9 @@ test.describe("PersonPicker — multi-add (picker stays open)", () => {
     await page.getByRole("button", { name: "Done" }).click();
 
     const nameInputs = page.getByPlaceholder("Name");
-    await expect(nameInputs).toHaveCount(6);
-    await expect(nameInputs.nth(4)).toHaveValue("Alice");
-    await expect(nameInputs.nth(5)).toHaveValue("Bob");
+    await expect(nameInputs).toHaveCount(2);
+    await expect(nameInputs.nth(0)).toHaveValue("Alice");
+    await expect(nameInputs.nth(1)).toHaveValue("Bob");
   });
 
   test("the picker can still be opened and used multiple times sequentially", async ({ page }) => {
@@ -145,9 +145,9 @@ test.describe("PersonPicker — multi-add (picker stays open)", () => {
     await addPersonViaPicker(page, "Bob");
 
     const nameInputs = page.getByPlaceholder("Name");
-    await expect(nameInputs).toHaveCount(6);
-    await expect(nameInputs.nth(4)).toHaveValue("Alice");
-    await expect(nameInputs.nth(5)).toHaveValue("Bob");
+    await expect(nameInputs).toHaveCount(2);
+    await expect(nameInputs.nth(0)).toHaveValue("Alice");
+    await expect(nameInputs.nth(1)).toHaveValue("Bob");
   });
 
   test("backdrop click closes picker mid-session, keeping already-added people", async ({ page }) => {
@@ -163,17 +163,13 @@ test.describe("PersonPicker — multi-add (picker stays open)", () => {
 
     // Alice was still added
     const nameInputs = page.getByPlaceholder("Name");
-    await expect(nameInputs).toHaveCount(5);
-    await expect(nameInputs.nth(4)).toHaveValue("Alice");
+    await expect(nameInputs).toHaveCount(1);
+    await expect(nameInputs.nth(0)).toHaveValue("Alice");
   });
 });
 
 test.describe("PersonPicker — integration with bill calculations", () => {
   test("person added via picker is included in equal split", async ({ page }) => {
-    // Remove all 4 sample people then add 2 via picker
-    for (let i = 0; i < 4; i++) {
-      await page.getByRole("button", { name: "Remove person" }).first().click();
-    }
     await addPersonViaPicker(page, "Alice");
     await addPersonViaPicker(page, "Bob");
 
@@ -187,9 +183,6 @@ test.describe("PersonPicker — integration with bill calculations", () => {
   test("adding a person via picker makes Covered/Remaining appear when all were removed", async ({
     page,
   }) => {
-    for (let i = 0; i < 4; i++) {
-      await page.getByRole("button", { name: "Remove person" }).first().click();
-    }
     await expect(page.getByText("Covered")).toHaveCount(0);
 
     await addPersonViaPicker(page, "Someone");
@@ -203,8 +196,8 @@ test.describe("PersonPicker — integration with bill calculations", () => {
 
     await addPersonViaPicker(page, "Extra");
 
-    // Now 5 people assigned to the expense; 50 / 5 = 10 each
+    // 1 person assigned to the expense; 50 / 1 = 50
     const personRows = page.locator("li", { has: page.getByPlaceholder("Name") });
-    await expect(personRows.nth(4)).toContainText("10.00");
+    await expect(personRows.nth(0)).toContainText("50.00");
   });
 });

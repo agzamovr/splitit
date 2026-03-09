@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { addPeople, DEFAULT_NAMES } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
+  await addPeople(page, DEFAULT_NAMES);
 });
 
 test.describe("Equal split", () => {

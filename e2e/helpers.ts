@@ -1,6 +1,18 @@
 /// <reference path="../src/telegram.d.ts" />
 import type { Page } from "@playwright/test";
 
+export const DEFAULT_NAMES = ["Rus", "Don", "Art", "Faz"];
+
+export async function addPeople(page: Page, names: string[]) {
+  await page.route("/api/**", (route) => route.fulfill({ status: 200, body: "{}" }));
+  await page.getByRole("button", { name: "Add Person" }).click();
+  for (const name of names) {
+    await page.getByPlaceholder("Enter a name…").fill(name);
+    await page.keyboard.press("Enter");
+  }
+  await page.getByRole("button", { name: "Done" }).click();
+}
+
 /** Inject a fake session token into localStorage so the app treats this as web-authenticated. */
 export async function mockWebSession(page: Page, token = "fakepayload.fakehex") {
   await page.addInitScript((t) => {

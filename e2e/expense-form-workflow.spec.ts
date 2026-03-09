@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { addPeople } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
@@ -8,21 +9,7 @@ test.describe("Full workflow", () => {
   test("equal split: add expenses and verify auto-balanced", async ({
     page,
   }) => {
-    // Remove all pre-loaded people
-    for (let i = 0; i < 4; i++) {
-      await page
-        .getByRole("button", { name: "Remove person" })
-        .first()
-        .click();
-    }
-
-    // Add two people via picker
-    await page.getByRole("button", { name: "Add Person" }).click();
-    await page.getByPlaceholder("Enter a name…").fill("Alice");
-    await page.keyboard.press("Enter");
-    await page.getByRole("button", { name: "Add Person" }).click();
-    await page.getByPlaceholder("Enter a name…").fill("Bob");
-    await page.keyboard.press("Enter");
+    await addPeople(page, ["Alice", "Bob"]);
 
     // Add two expenses
     await page.getByRole("button", { name: "Add expense" }).click();
@@ -57,23 +44,8 @@ test.describe("Full workflow", () => {
   test("amounts mode: manually set person amounts and balance", async ({
     page,
   }) => {
+    await addPeople(page, ["Alice", "Bob"]);
     await page.getByRole("button", { name: "Amounts" }).click();
-
-    // Remove all pre-loaded people
-    for (let i = 0; i < 4; i++) {
-      await page
-        .getByRole("button", { name: "Remove person" })
-        .first()
-        .click();
-    }
-
-    // Add two people via picker
-    await page.getByRole("button", { name: "Add Person" }).click();
-    await page.getByPlaceholder("Enter a name…").fill("Alice");
-    await page.keyboard.press("Enter");
-    await page.getByRole("button", { name: "Add Person" }).click();
-    await page.getByPlaceholder("Enter a name…").fill("Bob");
-    await page.keyboard.press("Enter");
 
     // Add two expenses
     await page.getByRole("button", { name: "Add expense" }).click();

@@ -5,7 +5,6 @@ import {
   type PricingMode,
   type ViewMode,
   type AssignmentMode,
-  SAMPLE_PEOPLE,
   genId,
 } from "./types";
 import { detectCurrency, detectCurrencyFromEdge } from "./currency";
@@ -27,9 +26,7 @@ export function useExpenseStore() {
   const [receiptTitle, setReceiptTitle] = useState(() => getDefaultReceiptTitle(new Date()));
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [manualTotal, setManualTotal] = useState("");
-  const [people, setPeople] = useState<Person[]>(
-    window.Telegram?.WebApp?.initData ? [] : SAMPLE_PEOPLE,
-  );
+  const [people, setPeople] = useState<Person[]>([]);
   const [splitMode, setSplitMode] = useState<"equally" | "amounts">("equally");
   const focusNewId = useRef<string | null>(null);
 

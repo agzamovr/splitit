@@ -15,43 +15,9 @@ test.describe("Initial state", () => {
     ).toBeVisible();
   });
 
-  test("shows pre-loaded people names", async ({ page }) => {
-    const nameInputs = page.getByPlaceholder("Name");
-    await expect(nameInputs).toHaveCount(4);
-    await expect(nameInputs.nth(0)).toHaveValue("Rus");
-    await expect(nameInputs.nth(1)).toHaveValue("Don");
-    await expect(nameInputs.nth(2)).toHaveValue("Art");
-    await expect(nameInputs.nth(3)).toHaveValue("Faz");
-  });
-
-  test("shows dash amounts in equally mode with no total", async ({
-    page,
-  }) => {
-    // In equally mode with no total, computed amounts are 0 — shown as "—"
-    const personRows = page.locator("li", { has: page.getByPlaceholder("Name") });
-    await expect(personRows.nth(0)).toContainText("—");
-    await expect(personRows.nth(1)).toContainText("—");
-    await expect(personRows.nth(2)).toContainText("—");
-    await expect(personRows.nth(3)).toContainText("—");
-  });
-
-  test("shows empty amount inputs in amounts mode", async ({ page }) => {
-    await page.getByRole("button", { name: "Amounts" }).click();
-
-    const amountInputs = page
-      .locator("li")
-      .filter({ has: page.getByPlaceholder("Name") })
-      .locator('input[type="number"][placeholder="0.00"]');
-    await expect(amountInputs).toHaveCount(4);
-    await expect(amountInputs.nth(0)).toHaveValue("");
-    await expect(amountInputs.nth(1)).toHaveValue("");
-    await expect(amountInputs.nth(2)).toHaveValue("");
-    await expect(amountInputs.nth(3)).toHaveValue("");
-  });
-
-  test("no avatar focus buttons for pre-loaded sample people (no telegramId)", async ({ page }) => {
+  test("no avatar focus buttons with no people loaded", async ({ page }) => {
     // Avatar buttons ("Assign expenses to this person") only render for people with telegramId.
-    // Sample people have none, so there should be zero such buttons.
+    // With no people loaded, there should be zero such buttons.
     await expect(
       page.getByRole("button", { name: "Assign expenses to this person" })
     ).toHaveCount(0);
