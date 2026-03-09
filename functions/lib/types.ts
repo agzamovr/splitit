@@ -35,4 +35,5 @@ export interface Env {
   BOT_ID: string;
   BOT_USERNAME: string;
   APP_URL: string;
+  GEMINI_API_KEY: string;
 }

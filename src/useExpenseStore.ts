@@ -7,6 +7,13 @@ import {
   type AssignmentMode,
   genId,
 } from "./types";
+
+export interface ParsedReceipt {
+  receiptTitle?: string;
+  expenses?: { description: string; price: string }[];
+  manualTotal?: string;
+  currency?: string;
+}
 import { detectCurrency, detectCurrencyFromEdge } from "./currency";
 import type { BillPayload } from "./api";
 
@@ -268,6 +275,36 @@ export function useExpenseStore() {
     }));
   };
 
+  const applyParsedReceipt = (parsed: ParsedReceipt) => {
+    if (parsed.receiptTitle) setReceiptTitle(parsed.receiptTitle);
+    if (parsed.currency) {
+      currencySetByUser.current = true;
+      setCurrency(parsed.currency);
+    }
+    if (parsed.expenses && parsed.expenses.length > 0) {
+      const newExpenses: Expense[] = parsed.expenses.map((e) => ({
+        id: genId(),
+        description: e.description,
+        price: e.price,
+        pricingMode: "total" as const,
+      }));
+      setExpenses(newExpenses);
+      setManualTotal("");
+      setAssignments(() => {
+        const next: Record<string, string[]> = {};
+        for (const e of newExpenses) {
+          next[e.id] = people.map((p) => p.id);
+        }
+        return next;
+      });
+    } else if (parsed.manualTotal) {
+      setManualTotal(parsed.manualTotal);
+      setExpenses([]);
+      setAssignments({});
+    }
+    setAssignmentMode(null);
+  };
+
   const loadBill = (bill: BillPayload) => {
     setReceiptTitle(bill.receiptTitle);
     setExpenses(bill.expenses);
@@ -347,5 +384,6 @@ export function useExpenseStore() {
     selectAllItems,
     selectAllPeople,
     loadBill,
+    applyParsedReceipt,
   };
 }
