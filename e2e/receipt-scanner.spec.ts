@@ -22,7 +22,7 @@ test.beforeEach(async ({ page }) => {
     })
   );
   await page.route("/api/**", (route) => route.fulfill({ status: 200, body: "{}" }));
-  await page.goto("/");
+  await page.goto("/new");
 });
 
 test("camera icon opens the scanner sheet", async ({ page }) => {
@@ -116,7 +116,7 @@ test("clipboard paste populates form", async ({ page }) => {
     });
   });
 
-  await page.goto("/");
+  await page.goto("/new");
 
   await page.getByRole("button", { name: "Scan receipt" }).click();
   await page.getByRole("button", { name: "Paste from Clipboard" }).click();

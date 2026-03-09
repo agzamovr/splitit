@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { addPeople, DEFAULT_NAMES } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/new");
 });
 
 test.describe("People management", () => {

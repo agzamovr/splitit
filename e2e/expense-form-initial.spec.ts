@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/new");
 });
 
 test.describe("Initial state", () => {
@@ -9,7 +9,7 @@ test.describe("Initial state", () => {
     // The Telegram WebApp script in index.html sets window.Telegram.WebApp, which
     // causes the app to hide its own header. Block that script so the header renders.
     await page.route("**/telegram-web-app.js", (route) => route.abort());
-    await page.goto("/");
+    await page.goto("/new");
     await expect(
       page.getByRole("heading", { name: "Split the Bill" })
     ).toBeVisible();

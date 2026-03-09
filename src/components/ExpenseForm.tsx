@@ -66,7 +66,7 @@ export function ExpenseForm() {
     const openedFromList = !!new URLSearchParams(window.location.search).get("billId");
     if (!openedFromList) return;
     tg.BackButton.show();
-    const goBack = () => void navigate({ to: "/bills" });
+    const goBack = () => void navigate({ to: "/" });
     tg.BackButton.onClick(goBack);
     return () => {
       tg.BackButton.hide();
@@ -139,7 +139,7 @@ export function ExpenseForm() {
         <div className="flex items-center gap-1.5 mb-0.5">
           <button
             className="text-xs text-espresso/40 hover:text-espresso/60 transition-colors shrink-0"
-            onClick={() => void navigate({ to: "/bills" })}
+            onClick={() => void navigate({ to: "/" })}
           >
             My Bills
           </button>

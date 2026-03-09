@@ -29,7 +29,7 @@ function LoginPage() {
 
   useEffect(() => {
     if (isWebAuthenticated()) {
-      void navigate({ to: "/bills" });
+      void navigate({ to: "/" });
       return;
     }
     const params = new URLSearchParams(window.location.search);
@@ -45,7 +45,7 @@ function LoginPage() {
     exchangeCode(code, verifier, redirectUri)
       .then(({ sessionToken }) => {
         saveSessionToken(sessionToken);
-        window.location.href = "/bills";
+        window.location.href = "/";
       })
       .catch(() => setStatus("error"));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

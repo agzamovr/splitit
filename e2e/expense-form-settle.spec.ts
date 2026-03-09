@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { addPeople, DEFAULT_NAMES } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/new");
   await addPeople(page, DEFAULT_NAMES);
 });
 
@@ -14,7 +14,7 @@ test.describe("Settle view", () => {
 
   test("Settle tab is disabled until split is balanced", async ({ page }) => {
     // Navigate fresh to get a clean state with no total set
-    await page.goto("/");
+    await page.goto("/new");
     await addPeople(page, DEFAULT_NAMES);
     const settleBtn = page.getByRole("button", { name: "Settle" });
     await expect(settleBtn).toBeDisabled();

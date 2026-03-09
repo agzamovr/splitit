@@ -25,7 +25,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         text: "Tap below to open the bill:",
         reply_markup: {
           inline_keyboard: [
-            [{ text: "Open Bill", web_app: { url: `${context.env.APP_URL}/?billId=${billId}` } }],
+            [{ text: "Open Bill", web_app: { url: `${context.env.APP_URL}/new?billId=${billId}` } }],
           ],
         },
       });
@@ -42,7 +42,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       reply_markup: {
         inline_keyboard: [
           [{ text: "My Bills", web_app: { url: `${context.env.APP_URL}/bills` } }],
-          [{ text: "New Bill", web_app: { url: context.env.APP_URL } }],
+          [{ text: "New Bill", web_app: { url: `${context.env.APP_URL}/new` } }],
         ],
       },
     });
@@ -51,7 +51,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       chat_id: chatId,
       text: "Tap below to create a new bill:",
       reply_markup: {
-        inline_keyboard: [[{ text: "New Bill", web_app: { url: context.env.APP_URL } }]],
+        inline_keyboard: [[{ text: "New Bill", web_app: { url: `${context.env.APP_URL}/new` } }]],
       },
     });
   }

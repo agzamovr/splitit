@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { addPeople } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/new");
 });
 
 test.describe("Full workflow", () => {

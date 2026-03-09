@@ -31,7 +31,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     });
   }
 
-  const appUrl = `${context.env.APP_URL}/?billId=${id}`;
+  const appUrl = `${context.env.APP_URL}/new?billId=${id}`;
   const tgRes = await sendTelegramMessage(context.env.BOT_TOKEN, {
     chat_id: chatId,
     text: `${auth.user.first_name} is splitting a bill: *${bill.receiptTitle}*`,

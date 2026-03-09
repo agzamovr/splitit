@@ -1,24 +1,17 @@
 import { test, expect } from "@playwright/test";
 import { mockTelegram, mockWebSession, makeBill } from "./helpers";
 
-// ─── Bills list page (/bills) ─────────────────────────────────────────────────
+// ─── Bills list page (/) ──────────────────────────────────────────────────────
 
-test.describe("/bills page — web session (no Telegram)", () => {
+test.describe("/ page — web session (no Telegram)", () => {
   test.beforeEach(async ({ page }) => {
     await mockWebSession(page);
     await page.route("/api/bills", (route) => route.fulfill({ json: [] }));
-    await page.goto("/bills");
+    await page.goto("/");
   });
 
   test("shows 'No bills yet' when API returns empty list", async ({ page }) => {
     await expect(page.getByText("No bills yet")).toBeVisible();
-  });
-
-  test("shows '← Back' button and navigates home", async ({ page }) => {
-    const back = page.getByRole("button", { name: "← Back" });
-    await expect(back).toBeVisible();
-    await back.click();
-    await expect(page).toHaveURL("/");
   });
 
   test("All/Unpaid/Unbalanced filter toggle renders all three buttons", async ({ page }) => {
@@ -34,21 +27,21 @@ test.describe("/bills page — web session (no Telegram)", () => {
   });
 });
 
-test.describe("/bills page — with Telegram + mocked API", () => {
+test.describe("/ page — with Telegram + mocked API", () => {
   test.beforeEach(async ({ page }) => {
     await mockTelegram(page);
   });
 
   test("shows 'No bills yet' when API returns empty list", async ({ page }) => {
     await page.route("/api/bills", (route) => route.fulfill({ json: [] }));
-    await page.goto("/bills");
+    await page.goto("/");
     await expect(page.getByText("No bills yet")).toBeVisible();
   });
 
   test("shows bill title and amount", async ({ page }) => {
     const bill = makeBill({ receiptTitle: "Team dinner", manualTotal: "120" });
     await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
-    await page.goto("/bills");
+    await page.goto("/");
     await expect(page.getByText("Team dinner")).toBeVisible();
     await expect(page.getByText("120.00")).toBeVisible();
   });
@@ -61,7 +54,7 @@ test.describe("/bills page — with Telegram + mocked API", () => {
       ],
     });
     await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
-    await page.goto("/bills");
+    await page.goto("/");
     await expect(page.locator("li span").filter({ hasText: /^Collected$/ })).toBeVisible();
   });
 
@@ -69,28 +62,28 @@ test.describe("/bills page — with Telegram + mocked API", () => {
     // paid="" for all people → sum(paid) = 0 < 100
     const bill = makeBill();
     await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
-    await page.goto("/bills");
+    await page.goto("/");
     await expect(page.locator("li span").filter({ hasText: /^Unpaid$/ })).toBeVisible();
   });
 
   test("shows 'Collected' for empty bill (total = 0)", async ({ page }) => {
     const bill = makeBill({ manualTotal: "0", people: [] });
     await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
-    await page.goto("/bills");
+    await page.goto("/");
     await expect(page.locator("li span").filter({ hasText: /^Collected$/ })).toBeVisible();
   });
 
   test("shows people count in subtitle", async ({ page }) => {
     const bill = makeBill();
     await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
-    await page.goto("/bills");
+    await page.goto("/");
     await expect(page.getByText(/2 people/)).toBeVisible();
   });
 
   test("does not show people count when bill has no people", async ({ page }) => {
     const bill = makeBill({ people: [] });
     await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
-    await page.goto("/bills");
+    await page.goto("/");
     await expect(page.getByText(/people/)).not.toBeVisible();
   });
 
@@ -105,7 +98,7 @@ test.describe("/bills page — with Telegram + mocked API", () => {
       ],
     });
     await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
-    await page.goto("/bills");
+    await page.goto("/");
     await page.getByRole("button", { name: "Unpaid", exact: true }).click();
     await expect(page.getByText("No unpaid bills")).toBeVisible();
     await expect(page.getByText("Pizza night")).not.toBeVisible();
@@ -122,7 +115,7 @@ test.describe("/bills page — with Telegram + mocked API", () => {
     });
     const uncollected = makeBill({ id: "b2", receiptTitle: "Overdue" }); // paid="" → uncollected
     await page.route("/api/bills", (route) => route.fulfill({ json: [collected, uncollected] }));
-    await page.goto("/bills");
+    await page.goto("/");
     await page.getByRole("button", { name: "Unpaid", exact: true }).click();
     await expect(page.locator("ul li").filter({ hasText: "Overdue" })).toBeVisible();
     await expect(page.locator("ul li").filter({ hasText: "Fully Paid" })).not.toBeVisible();
@@ -139,7 +132,7 @@ test.describe("/bills page — with Telegram + mocked API", () => {
     });
     const uncollected = makeBill({ id: "b2", receiptTitle: "Overdue" });
     await page.route("/api/bills", (route) => route.fulfill({ json: [collected, uncollected] }));
-    await page.goto("/bills");
+    await page.goto("/");
     await page.getByRole("button", { name: "Unpaid", exact: true }).click();
     await page.getByRole("button", { name: "All", exact: true }).click();
     await expect(page.locator("ul li").filter({ hasText: "Fully Paid" })).toBeVisible();
@@ -154,7 +147,7 @@ test.describe("/bills page — with Telegram + mocked API", () => {
       people: [{ id: "p1", name: "Alice", amount: "30", paid: "" }], // 30 ≠ 100
     });
     await page.route("/api/bills", (route) => route.fulfill({ json: [balanced, unbalanced] }));
-    await page.goto("/bills");
+    await page.goto("/");
     await page.getByRole("button", { name: "Unbalanced", exact: true }).click();
     await expect(page.locator("ul li").filter({ hasText: "Bad Split" })).toBeVisible();
     await expect(page.locator("ul li").filter({ hasText: "Even Split" })).not.toBeVisible();
@@ -163,7 +156,7 @@ test.describe("/bills page — with Telegram + mocked API", () => {
   test("'Unbalanced' filter shows 'No unbalanced bills' when all are balanced", async ({ page }) => {
     const bill = makeBill(); // 50+50=100 → balanced
     await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
-    await page.goto("/bills");
+    await page.goto("/");
     await page.getByRole("button", { name: "Unbalanced", exact: true }).click();
     await expect(page.getByText("No unbalanced bills")).toBeVisible();
   });
@@ -176,7 +169,7 @@ test.describe("/bills page — with Telegram + mocked API", () => {
       people: [{ id: "p1", name: "Alice", amount: "30", paid: "" }],
     });
     await page.route("/api/bills", (route) => route.fulfill({ json: [balanced, unbalanced] }));
-    await page.goto("/bills");
+    await page.goto("/");
     await page.getByRole("button", { name: "Unbalanced", exact: true }).click();
     await page.getByRole("button", { name: "All", exact: true }).click();
     await expect(page.locator("ul li").filter({ hasText: "Even Split" })).toBeVisible();
@@ -186,11 +179,11 @@ test.describe("/bills page — with Telegram + mocked API", () => {
   test("no 'Delete All' button in header", async ({ page }) => {
     const bill = makeBill();
     await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
-    await page.goto("/bills");
+    await page.goto("/");
     await expect(page.getByTitle("Delete all bills")).not.toBeVisible();
   });
 
-  test("clicking a bill navigates to /?billId=...", async ({ page }) => {
+  test("clicking a bill navigates to /new?billId=...", async ({ page }) => {
     const bill = makeBill({ id: "abc99" });
     await page.route("/api/bills", (route) => route.fulfill({ json: [bill] }));
     // Intercept navigation to avoid actual page load from impeding the test
@@ -198,7 +191,7 @@ test.describe("/bills page — with Telegram + mocked API", () => {
     page.on("framenavigated", (frame) => {
       if (frame === page.mainFrame()) navigatedUrl = frame.url();
     });
-    await page.goto("/bills");
+    await page.goto("/");
     await page.getByText("Pizza night").click();
     expect(navigatedUrl).toContain("billId=abc99");
   });
@@ -209,7 +202,7 @@ test.describe("/bills page — with Telegram + mocked API", () => {
       makeBill({ id: "b2", receiptTitle: "Second" }),
     ];
     await page.route("/api/bills", (route) => route.fulfill({ json: bills }));
-    await page.goto("/bills");
+    await page.goto("/");
     const items = page.locator("ul li");
     await expect(items).toHaveCount(2);
     await expect(items.nth(0)).toContainText("First");
@@ -232,7 +225,7 @@ test.describe("Bills list — loading state", () => {
         await route.continue();
       }
     });
-    await page.goto("/bills");
+    await page.goto("/");
     await expect(page.getByText("Loading…")).toBeVisible();
     resolveRoute();
     await expect(page.getByText("No bills yet")).toBeVisible();
@@ -250,7 +243,7 @@ test.describe("Bills list — delete per-bill", () => {
       if (route.request().method() === "GET") return route.fulfill({ json: [bill] });
       return route.continue();
     });
-    await page.goto("/bills");
+    await page.goto("/");
     await expect(page.getByText("To Delete")).toBeVisible();
   });
 
@@ -299,13 +292,13 @@ test.describe("Bills list — delete per-bill", () => {
   });
 });
 
-// ─── "+ New" button on /bills ─────────────────────────────────────────────────
+// ─── "+ New" button on / ──────────────────────────────────────────────────────
 
-test.describe("New Bill button on /bills", () => {
-  test("visible and navigates to /", async ({ page }) => {
+test.describe("New Bill button on /", () => {
+  test("visible and navigates to /new", async ({ page }) => {
     await mockWebSession(page);
     await page.route("/api/bills", (route) => route.fulfill({ json: [] }));
-    await page.goto("/bills");
+    await page.goto("/");
     const btn = page.getByRole("button", { name: "New bill" });
     await expect(btn).toBeVisible();
     let navigatedUrl = "";
@@ -313,6 +306,6 @@ test.describe("New Bill button on /bills", () => {
       if (frame === page.mainFrame()) navigatedUrl = frame.url();
     });
     await btn.click();
-    expect(navigatedUrl).toMatch(/\/$/);
+    expect(navigatedUrl).toMatch(/\/new$/);
   });
 });

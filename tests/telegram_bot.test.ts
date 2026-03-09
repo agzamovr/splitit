@@ -70,7 +70,7 @@ describe("telegram_bot webhook", () => {
     expect(payload.chat_id).toBe(55);
     const button = payload.reply_markup.inline_keyboard[0][0];
     expect(button.text).toBe("Open Bill");
-    expect(button.web_app.url).toBe("https://example.com/?billId=abc123");
+    expect(button.web_app.url).toBe("https://example.com/new?billId=abc123");
   });
 
   it("/start without param sends join message (no inline keyboard)", async () => {
@@ -96,7 +96,7 @@ describe("telegram_bot webhook", () => {
     expect(payload.chat_id).toBe(77);
     const button = payload.reply_markup.inline_keyboard[0][0];
     expect(button.text).toBe("New Bill");
-    expect(button.web_app.url).toBe("https://example.com");
+    expect(button.web_app.url).toBe("https://example.com/new");
   });
 
   it("unknown command returns 'ok' without sending a message", async () => {
@@ -118,7 +118,7 @@ describe("telegram_bot webhook", () => {
       expect(row0[0].text).toBe("My Bills");
       expect(row0[0].web_app.url).toBe("https://example.com/bills");
       expect(row1[0].text).toBe("New Bill");
-      expect(row1[0].web_app.url).toBe("https://example.com");
+      expect(row1[0].web_app.url).toBe("https://example.com/new");
     });
   });
 });

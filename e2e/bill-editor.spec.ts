@@ -24,7 +24,7 @@ test.describe("Save indicator", () => {
         });
       }
     });
-    await page.goto("/");
+    await page.goto("/new");
   });
 
   test("shows 'Save failed' when PATCH returns an error", async ({ page }) => {
@@ -66,7 +66,7 @@ test.describe("Share button", () => {
         });
       }
     });
-    await page.goto("/");
+    await page.goto("/new");
     // Wait for bill creation to complete (share button appears)
     await expect(page.getByRole("button", { name: "Share with Group" })).toBeVisible({ timeout: 5000 });
   });
@@ -149,7 +149,7 @@ test.describe("Share button", () => {
         });
       }
     });
-    await page.goto("/");
+    await page.goto("/new");
     // Wait for the bill to load (title input ready), then assert button is absent
     await expect(page.getByPlaceholder("Receipt title")).toBeVisible({ timeout: 5000 });
     await expect(page.getByRole("button", { name: "Share with Group" })).toHaveCount(0);
@@ -159,17 +159,17 @@ test.describe("Share button", () => {
 // ─── "My Bills" breadcrumb ────────────────────────────────────────────────────
 
 test.describe("My Bills breadcrumb", () => {
-  test("visible without Telegram context and navigates to /bills", async ({ page }) => {
+  test("visible without Telegram context and navigates to /", async ({ page }) => {
     await mockWebSession(page);
     await page.route("/api/bills", (route) => route.fulfill({ json: [] }));
-    await page.goto("/");
+    await page.goto("/new");
     const btn = page.getByRole("button", { name: "My Bills" });
     await expect(btn).toBeVisible();
     await btn.click();
-    await expect(page).toHaveURL("/bills");
+    await expect(page).toHaveURL("/");
   });
 
-  test("visible in Telegram context and navigates to /bills", async ({ page }) => {
+  test("visible in Telegram context and navigates to /", async ({ page }) => {
     await mockTelegram(page);
     await page.route("/api/bills", async (route) => {
       if (route.request().method() === "POST") {
@@ -187,14 +187,14 @@ test.describe("My Bills breadcrumb", () => {
         },
       }),
     );
-    await page.goto("/");
+    await page.goto("/new");
     await expect(page.getByRole("button", { name: "My Bills" })).toBeVisible({ timeout: 5000 });
     await page.getByRole("button", { name: "My Bills" }).click();
-    await expect(page).toHaveURL("/bills");
+    await expect(page).toHaveURL("/");
   });
 
   test("appears above the receipt title input", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/new");
     const breadcrumb = page.getByRole("button", { name: "My Bills" });
     const titleInput = page.getByPlaceholder("Receipt title");
     await expect(breadcrumb).toBeVisible();
@@ -208,7 +208,7 @@ test.describe("My Bills breadcrumb", () => {
 // ─── Back button (Telegram) from bill → /bills ────────────────────────────────
 
 test.describe("Back button from bill to /bills", () => {
-  test("Telegram back button navigates to /bills when bill opened via ?billId", async ({ page }) => {
+  test("Telegram back button navigates to / when bill opened via ?billId", async ({ page }) => {
     // Expose a way to trigger the back button callback from tests
     await page.route("**/telegram-web-app.js", (route) => route.abort());
     await page.addInitScript(() => {
@@ -241,9 +241,9 @@ test.describe("Back button from bill to /bills", () => {
       }),
     );
 
-    await page.goto("/?billId=bill-from-list");
+    await page.goto("/new?billId=bill-from-list");
     // Trigger the Telegram back button
     await page.evaluate(() => (window as unknown as { __triggerBack?: () => void }).__triggerBack?.());
-    await expect(page).toHaveURL("/bills");
+    await expect(page).toHaveURL("/");
   });
 });

@@ -10,7 +10,7 @@ async function addPersonViaPicker(page: Page, name: string) {
 test.beforeEach(async ({ page }) => {
   // Silence the fire-and-forget POST to /api/people (no backend in dev)
   await page.route("/api/**", (route) => route.fulfill({ status: 200, body: "{}" }));
-  await page.goto("/");
+  await page.goto("/new");
 });
 
 test.describe("PersonPicker — opening and closing", () => {
