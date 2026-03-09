@@ -22,25 +22,26 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const auth = await requireUser(context);
   if (!auth.ok) return auth.response;
 
-  let formData: FormData;
+  let body: { image?: unknown; mimeType?: unknown };
   try {
-    formData = await context.request.formData();
+    body = await context.request.json<{ image?: unknown; mimeType?: unknown }>();
   } catch {
-    return json({ error: "Invalid multipart form data" }, 400);
+    return json({ error: "Invalid JSON body" }, 400);
   }
 
-  const file = formData.get("image");
-  if (!(file instanceof Blob)) {
+  const base64 = body.image;
+  if (typeof base64 !== "string" || !base64) {
     return json({ error: "Missing image field" }, 400);
   }
 
-  const buffer = await file.arrayBuffer();
-  if (buffer.byteLength > MAX_BYTES) {
+  // ~4/3 ratio: base64 length → approximate byte size
+  if (Math.floor(base64.length * 3 / 4) > MAX_BYTES) {
     return json({ error: "Image too large (max 10 MB)" }, 413);
   }
 
-  const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-  const mimeType = file.type || "image/jpeg";
+  const mimeType = typeof body.mimeType === "string" && body.mimeType
+    ? body.mimeType
+    : "image/jpeg";
 
   const geminiBody = {
     contents: [

@@ -17,6 +17,15 @@ function authHeader(): string {
   return "";
 }
 
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 async function resizeImage(file: File | Blob, maxWidth = 1500): Promise<Blob> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -69,14 +78,12 @@ export function ReceiptScanner({ store, onClose }: Props) {
 
     try {
       const resized = await resizeImage(file);
-      const formData = new FormData();
-      const imageFile = new File([resized], "receipt.jpg", { type: "image/jpeg" });
-      formData.append("image", imageFile);
+      const base64 = await blobToBase64(resized);
 
       const res = await fetch("/api/parse-receipt", {
         method: "POST",
-        headers: { Authorization: authHeader() },
-        body: formData,
+        headers: { Authorization: authHeader(), "Content-Type": "application/json" },
+        body: JSON.stringify({ image: base64, mimeType: "image/jpeg" }),
       });
 
       const data = await res.json() as ParsedReceipt & { error?: string };
