@@ -6,9 +6,10 @@ const MOCK_CONFIG = { botId: "9999", botUsername: "TestBot" };
 // ─── /bills redirect guard ────────────────────────────────────────────────────
 
 test.describe("/bills redirect guard", () => {
-  test("unauthenticated browser user is redirected to /login", async ({ page }) => {
+  test("unauthenticated browser user sees bills page in dev mode (no redirect)", async ({ page }) => {
     await page.goto("/bills");
-    await expect(page).toHaveURL("/login");
+    await expect(page).toHaveURL("/bills");
+    await expect(page.getByText("No bills yet")).toBeVisible();
   });
 
   test("Mini App user (Telegram context) reaches /bills without redirect", async ({ page }) => {

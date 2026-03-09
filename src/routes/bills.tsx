@@ -8,7 +8,7 @@ import { billKeys } from "@/queryKeys";
 export const Route = createFileRoute("/bills")({
   beforeLoad: () => {
     const isMiniApp = !!window.Telegram?.WebApp?.initData;
-    if (!isMiniApp && !isWebAuthenticated()) {
+    if (!import.meta.env.DEV && !isMiniApp && !isWebAuthenticated()) {
       throw redirect({ to: "/login" });
     }
   },
@@ -169,7 +169,7 @@ function BillsPage() {
         {/* New Bill */}
         <button
           onClick={() => { window.location.href = "/"; }}
-          className="text-espresso/40 hover:text-terracotta transition-colors"
+          className="w-7 h-7 rounded-full bg-terracotta/10 text-terracotta hover:bg-terracotta/20 active:bg-terracotta/30 flex items-center justify-center transition-colors"
           title="New bill"
           aria-label="New bill"
         >
