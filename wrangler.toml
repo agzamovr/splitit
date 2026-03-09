@@ -3,8 +3,8 @@ pages_build_output_dir = "dist"
 
 [vars]
 APP_URL = "https://splitit-b60.pages.dev"
-BOT_ID = "1234567890"
-BOT_USERNAME = "YourBot"
+BOT_ID = "8000266188"
+BOT_USERNAME = "SplitTheBill"
 # Secrets (set via `wrangler secret put GEMINI_API_KEY`):
 #   GEMINI_API_KEY — Google Gemini API key for receipt parsing
 
