@@ -1,9 +1,10 @@
 import type { Env } from "../../lib/types";
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const { code, code_verifier } = await context.request.json<{
+  const { code, code_verifier, redirect_uri } = await context.request.json<{
     code: string;
     code_verifier: string;
+    redirect_uri: string;
   }>();
 
   const tokenRes = await fetch("https://oauth.telegram.org/token", {
@@ -12,7 +13,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     body: new URLSearchParams({
       grant_type: "authorization_code",
       code,
-      redirect_uri: context.env.APP_URL + "/login",
+      redirect_uri,
       client_id: context.env.BOT_ID,
       client_secret: context.env.BOT_TOKEN,
       code_verifier,

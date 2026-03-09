@@ -41,10 +41,11 @@ function LoginPage() {
     sessionStorage.removeItem("pkce_verifier");
     window.history.replaceState({}, "", window.location.pathname);
 
-    exchangeCode(code, verifier)
+    const redirectUri = window.location.origin + "/login";
+    exchangeCode(code, verifier, redirectUri)
       .then(({ sessionToken }) => {
         saveSessionToken(sessionToken);
-        void navigate({ to: "/bills" });
+        window.location.href = "/bills";
       })
       .catch(() => setStatus("error"));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

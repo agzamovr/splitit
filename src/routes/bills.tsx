@@ -1,7 +1,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listBills, deleteBill, isWebAuthenticated, type Bill } from "@/api";
+import { listBills, deleteBill, isWebAuthenticated, clearSessionToken, type Bill } from "@/api";
 import { formatAmount } from "@/currency";
 import { billKeys } from "@/queryKeys";
 
@@ -153,6 +153,15 @@ function BillsPage() {
           </button>
         )}
         <h1 className="text-base font-semibold text-espresso tracking-tight flex-1">My Bills</h1>
+
+        {!isTgContext && (
+          <button
+            onClick={() => { clearSessionToken(); window.location.href = "/login"; }}
+            className="text-xs text-espresso/40 hover:text-espresso/70 transition-colors"
+          >
+            Sign out
+          </button>
+        )}
 
         {/* Filter toggle */}
         <div className="flex gap-1 bg-espresso/8 rounded-lg p-1 text-xs">
