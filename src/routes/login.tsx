@@ -55,11 +55,10 @@ function LoginPage() {
     sessionStorage.setItem("pkce_verifier", code_verifier);
 
     const url = new URL("https://oauth.telegram.org/auth");
-    url.searchParams.set("bot_id", config.botId);
+    url.searchParams.set("client_id", config.botId);
     url.searchParams.set("response_type", "code");
     url.searchParams.set("scope", "openid profile");
     url.searchParams.set("redirect_uri", window.location.origin + "/login");
-    url.searchParams.set("origin", window.location.origin);
     url.searchParams.set("state", crypto.randomUUID());
     url.searchParams.set("code_challenge", code_challenge);
     url.searchParams.set("code_challenge_method", "S256");
