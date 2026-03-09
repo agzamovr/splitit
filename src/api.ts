@@ -51,6 +51,17 @@ export function getConfig(): Promise<{ botId: string; botUsername: string }> {
   return fetch("/api/config").then((r) => r.json() as Promise<{ botId: string; botUsername: string }>);
 }
 
+export function exchangeInitData(initData: string): Promise<{ sessionToken: string }> {
+  return fetch("/api/auth/initdata", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ initData }),
+  }).then((r) => {
+    if (!r.ok) throw new Error("Exchange failed");
+    return r.json() as Promise<{ sessionToken: string }>;
+  });
+}
+
 export function exchangeCode(code: string, code_verifier: string, redirect_uri: string): Promise<{ sessionToken: string }> {
   return fetch("/api/auth/exchange", {
     method: "POST",
