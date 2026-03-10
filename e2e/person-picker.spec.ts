@@ -95,10 +95,35 @@ test.describe("PersonPicker — adding a custom person", () => {
     await expect(page.getByPlaceholder("Enter a name…")).toHaveValue("");
   });
 
-  test("person added via picker (no telegramId) has avatar focus button", async ({ page }) => {
+  test("person added via picker (no telegramId) shows an avatar focus button", async ({ page }) => {
     await addPersonViaPicker(page, "Eve");
-    // Avatar button ("Assign expenses to this person") renders for all people
+    // Avatar button renders for ALL people now, not just Telegram users
     await expect(page.getByRole("button", { name: "Assign expenses to this person" })).toHaveCount(1);
+  });
+
+  test("each manually added person gets their own avatar focus button", async ({ page }) => {
+    await page.route("/api/**", (route) => route.fulfill({ status: 200, body: "{}" }));
+    await addPersonViaPicker(page, "Alice");
+    await addPersonViaPicker(page, "Bob");
+    await expect(page.getByRole("button", { name: "Assign expenses to this person" })).toHaveCount(2);
+  });
+
+  test("clicking avatar on a manually added person activates focus mode for that person", async ({ page }) => {
+    await page.route("/api/**", (route) => route.fulfill({ status: 200, body: "{}" }));
+    await page.locator('input[type="number"].text-xl').fill("90");
+    await addPersonViaPicker(page, "Alice");
+    await addPersonViaPicker(page, "Bob");
+    await addPersonViaPicker(page, "Carol");
+
+    // Click Carol's avatar (third person)
+    await page.getByRole("button", { name: "Assign expenses to this person" }).nth(2).click();
+
+    // Carol's row becomes active (border-l-sage class applied to inner div)
+    const personRows = page.locator("li", { has: page.getByPlaceholder("Name") });
+    await expect(personRows.nth(2).locator("div").first()).toHaveClass(/border-l-sage/);
+    // The other two rows are dimmed
+    await expect(personRows.nth(0)).toHaveClass(/opacity-30/);
+    await expect(personRows.nth(1)).toHaveClass(/opacity-30/);
   });
 });
 

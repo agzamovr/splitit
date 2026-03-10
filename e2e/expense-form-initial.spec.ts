@@ -16,7 +16,7 @@ test.describe("Initial state", () => {
   });
 
   test("no avatar focus buttons with no people loaded", async ({ page }) => {
-    // Avatar buttons ("Assign expenses to this person") only render for people with telegramId.
+    // Avatar buttons ("Assign expenses to this person") render for every person row.
     // With no people loaded, there should be zero such buttons.
     await expect(
       page.getByRole("button", { name: "Assign expenses to this person" })
