@@ -205,6 +205,93 @@ test.describe("My Bills breadcrumb", () => {
   });
 });
 
+// ─── Web-authenticated users ──────────────────────────────────────────────────
+
+test.describe("Web-authenticated users", () => {
+  test("loads existing bill via ?billId URL param", async ({ page }) => {
+    await mockWebSession(page);
+    await page.route("/api/bills/web-bill-id", (route) =>
+      route.fulfill({
+        json: {
+          id: "web-bill-id", creatorTelegramId: 0, version: 1,
+          receiptTitle: "Web Dinner", expenses: [], manualTotal: "42",
+          people: [], assignments: {}, splitMode: "equally", currency: "USD",
+        },
+      }),
+    );
+
+    await page.goto("/new?billId=web-bill-id");
+    await expect(page.getByPlaceholder("Receipt title")).toHaveValue("Web Dinner", { timeout: 5000 });
+  });
+
+  test("creates a new bill when no billId in URL", async ({ page }) => {
+    await mockWebSession(page);
+    let postCalled = false;
+    await page.route("/api/bills", async (route) => {
+      if (route.request().method() === "POST") {
+        postCalled = true;
+        await route.fulfill({ json: { billId: "new-web-bill" } });
+      } else {
+        await route.fulfill({ json: [] });
+      }
+    });
+    await page.route("/api/bills/new-web-bill", (route) =>
+      route.fulfill({
+        json: {
+          id: "new-web-bill", creatorTelegramId: 0, version: 1,
+          receiptTitle: "", expenses: [], manualTotal: "",
+          people: [], assignments: {}, splitMode: "equally", currency: "USD",
+        },
+      }),
+    );
+
+    await page.goto("/new");
+    await expect(page.getByPlaceholder("Receipt title")).toBeVisible({ timeout: 5000 });
+    expect(postCalled).toBe(true);
+  });
+
+  test("patches bill when web user edits receipt title", async ({ page }) => {
+    await mockWebSession(page);
+    await page.route("/api/bills", async (route) => {
+      if (route.request().method() === "POST") {
+        await route.fulfill({ json: { billId: "patch-web-bill" } });
+      } else {
+        await route.fulfill({ json: [] });
+      }
+    });
+    await page.route("/api/bills/patch-web-bill", async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({
+          json: {
+            id: "patch-web-bill", creatorTelegramId: 0, version: 1,
+            receiptTitle: "", expenses: [], manualTotal: "",
+            people: [], assignments: {}, splitMode: "equally", currency: "USD",
+          },
+        });
+      }
+    });
+
+    let patchBody: unknown = null;
+    await page.route("**/api/bills/patch-web-bill", async (route) => {
+      if (route.request().method() === "PATCH") {
+        patchBody = route.request().postDataJSON();
+        await route.fulfill({ json: { id: "patch-web-bill", version: 2, receiptTitle: "Lunch", expenses: [], manualTotal: "", people: [], assignments: {}, splitMode: "equally", currency: "USD" } });
+      } else {
+        await route.continue();
+      }
+    });
+
+    await page.goto("/new");
+    await page.getByPlaceholder("Receipt title").fill("Lunch");
+    // Wait for the debounced PATCH to fire (500ms debounce + network)
+    await page.waitForResponse(
+      (r) => r.url().includes("patch-web-bill") && r.request().method() === "PATCH",
+      { timeout: 5000 },
+    );
+    expect((patchBody as { receiptTitle?: string })?.receiptTitle).toBe("Lunch");
+  });
+});
+
 // ─── Back button (Telegram) from bill → /bills ────────────────────────────────
 
 test.describe("Back button from bill to /bills", () => {

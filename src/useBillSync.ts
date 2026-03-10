@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createBill, getBill, patchBill, type BillPayload } from "./api";
+import { createBill, getBill, patchBill, isWebAuthenticated, type BillPayload } from "./api";
 import { billKeys } from "./queryKeys";
 import type { useExpenseStore } from "./useExpenseStore";
 
@@ -24,8 +24,9 @@ interface UseBillSyncOptions {
 }
 
 export function useBillSync({ store, onBillLoaded }: UseBillSyncOptions) {
+  const isAuthenticated = !!window.Telegram?.WebApp?.initData || isWebAuthenticated();
   const [billId, setBillId] = useState<string | null>(() => {
-    if (!window.Telegram?.WebApp?.initData) return null;
+    if (!window.Telegram?.WebApp?.initData && !isWebAuthenticated()) return null;
     return new URLSearchParams(window.location.search).get("billId");
   });
   const [loading, setLoading] = useState(false);
@@ -49,8 +50,7 @@ export function useBillSync({ store, onBillLoaded }: UseBillSyncOptions) {
 
   // Mount: create new bill if no billId in URL
   useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-    if (!tg?.initData) return;
+    if (!isAuthenticated) return;
     if (billId) { setLoading(false); return; } // useQuery handles existing bill
 
     let mounted = true;
@@ -84,7 +84,7 @@ export function useBillSync({ store, onBillLoaded }: UseBillSyncOptions) {
   const { data: remoteBill, isPending: isRemotePending } = useQuery({
     queryKey: billKeys.detail(billId ?? ""),
     queryFn: () => getBill(billId!),
-    enabled: !!billId && !!window.Telegram?.WebApp?.initData,
+    enabled: !!billId && isAuthenticated,
     refetchInterval: 4000,
     staleTime: 0,
   });
