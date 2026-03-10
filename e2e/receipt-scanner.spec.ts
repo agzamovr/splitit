@@ -14,6 +14,9 @@ const MOCK_RECEIPT = {
 const TINY_JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
 
 test.beforeEach(async ({ page }) => {
+  // Register wildcard first — Playwright uses last-registered-wins, so the specific
+  // route below will take precedence over this catch-all for /api/parse-receipt.
+  await page.route("/api/**", (route) => route.fulfill({ status: 200, body: "{}" }));
   await page.route("/api/parse-receipt", (route) =>
     route.fulfill({
       status: 200,
@@ -21,7 +24,6 @@ test.beforeEach(async ({ page }) => {
       body: JSON.stringify(MOCK_RECEIPT),
     })
   );
-  await page.route("/api/**", (route) => route.fulfill({ status: 200, body: "{}" }));
   await page.goto("/new");
 });
 
@@ -73,6 +75,14 @@ test("parse error shows message and retry button", async ({ page }) => {
 
 test("people are preserved after scanning", async ({ page }) => {
   await addPeople(page, DEFAULT_NAMES);
+  // addPeople re-registers /api/**, overriding the specific parse-receipt route; restore it
+  await page.route("/api/parse-receipt", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(MOCK_RECEIPT),
+    })
+  );
   await page.getByRole("button", { name: "Scan receipt" }).click();
   await page
     .locator('input[type="file"]:not([capture])')
@@ -85,6 +95,14 @@ test("people are preserved after scanning", async ({ page }) => {
 
 test("new expenses are assigned to all people", async ({ page }) => {
   await addPeople(page, DEFAULT_NAMES);
+  // addPeople re-registers /api/**, overriding the specific parse-receipt route; restore it
+  await page.route("/api/parse-receipt", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(MOCK_RECEIPT),
+    })
+  );
   await page.getByRole("button", { name: "Scan receipt" }).click();
   await page
     .locator('input[type="file"]:not([capture])')

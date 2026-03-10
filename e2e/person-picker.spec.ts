@@ -95,10 +95,10 @@ test.describe("PersonPicker — adding a custom person", () => {
     await expect(page.getByPlaceholder("Enter a name…")).toHaveValue("");
   });
 
-  test("person added via picker (no telegramId) has no avatar focus button", async ({ page }) => {
+  test("person added via picker (no telegramId) has avatar focus button", async ({ page }) => {
     await addPersonViaPicker(page, "Eve");
-    // Avatar button ("Assign expenses to this person") only renders for telegramId people
-    await expect(page.getByRole("button", { name: "Assign expenses to this person" })).toHaveCount(0);
+    // Avatar button ("Assign expenses to this person") renders for all people
+    await expect(page.getByRole("button", { name: "Assign expenses to this person" })).toHaveCount(1);
   });
 });
 

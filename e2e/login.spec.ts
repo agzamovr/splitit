@@ -106,7 +106,7 @@ test.describe("/login page — login initiation", () => {
     ]);
 
     const url = new URL(request.url());
-    expect(url.searchParams.get("bot_id")).toBe(MOCK_CONFIG.botId);
+    expect(url.searchParams.get("client_id")).toBe(MOCK_CONFIG.botId);
     expect(url.searchParams.get("response_type")).toBe("code");
     expect(url.searchParams.get("scope")).toContain("openid");
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
@@ -160,7 +160,8 @@ test.describe("/login page — OAuth callback", () => {
 
   test("removes pkce_verifier from sessionStorage after exchange", async ({ page }) => {
     await page.addInitScript(() => {
-      sessionStorage.setItem("pkce_verifier", "test_verifier_abc");
+      // Only set on /login — addInitScript runs on every navigation including the redirect to /
+      if (location.pathname === "/login") sessionStorage.setItem("pkce_verifier", "test_verifier_abc");
     });
 
     await page.route("/api/config", (route) => route.fulfill({ json: MOCK_CONFIG }));
