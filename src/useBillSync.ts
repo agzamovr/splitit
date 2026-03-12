@@ -2,28 +2,22 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createBill, getBill, patchBill, isWebAuthenticated, type BillPayload } from "./api";
 import { billKeys } from "./queryKeys";
-import type { useExpenseStore } from "./useExpenseStore";
+import { useBillStore } from "./store";
 
-type Store = ReturnType<typeof useExpenseStore>;
-
-function storeSnapshot(store: Store): BillPayload {
+function storeSnapshot(): BillPayload {
+  const s = useBillStore.getState();
   return {
-    receiptTitle: store.receiptTitle,
-    expenses: store.expenses,
-    manualTotal: store.manualTotal,
-    people: store.people,
-    assignments: store.assignments,
-    splitMode: store.splitMode,
-    currency: store.currency,
+    receiptTitle: s.receiptTitle,
+    expenses: s.expenses,
+    manualTotal: s.manualTotal,
+    people: s.people,
+    assignments: s.assignments,
+    splitMode: s.splitMode,
+    currency: s.currency,
   };
 }
 
-interface UseBillSyncOptions {
-  store: Store;
-  onBillLoaded: (bill: BillPayload) => void;
-}
-
-export function useBillSync({ store, onBillLoaded }: UseBillSyncOptions) {
+export function useBillSync() {
   const isAuthenticated = !!window.Telegram?.WebApp?.initData || isWebAuthenticated();
   const [billId, setBillId] = useState<string | null>(() => {
     if (!window.Telegram?.WebApp?.initData && !isWebAuthenticated()) return null;
@@ -40,13 +34,7 @@ export function useBillSync({ store, onBillLoaded }: UseBillSyncOptions) {
   const isCreatorSetRef = useRef(false);
   const billIdRef = useRef<string | null>(billId);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const storeRef = useRef(store);
-  const onBillLoadedRef = useRef(onBillLoaded);
   const queryClient = useQueryClient();
-
-  // Keep refs in sync on every render without scheduling effects
-  storeRef.current = store;
-  onBillLoadedRef.current = onBillLoaded;
 
   // Mount: create new bill if no billId in URL
   useEffect(() => {
@@ -55,7 +43,7 @@ export function useBillSync({ store, onBillLoaded }: UseBillSyncOptions) {
 
     let mounted = true;
     setLoading(true);
-    createBill(storeSnapshot(storeRef.current))
+    createBill(storeSnapshot())
       .then(({ billId: newId }) => {
         if (!mounted) return;
         billIdRef.current = newId;
@@ -101,7 +89,7 @@ export function useBillSync({ store, onBillLoaded }: UseBillSyncOptions) {
       setIsCreator(tgUser ? remoteBill.creatorTelegramId === tgUser.id : false);
     }
     setLoading(false);
-    onBillLoadedRef.current(remoteBill);
+    useBillStore.getState().loadBill(remoteBill);
   }, [remoteBill]);
 
   const patchMutation = useMutation({
@@ -116,11 +104,18 @@ export function useBillSync({ store, onBillLoaded }: UseBillSyncOptions) {
     onError: () => setSaveStatus("error"),
   });
 
-  // Debounced write on store changes
+  // Subscribe to relevant store slices for debounced save
+  const receiptTitle = useBillStore((s) => s.receiptTitle);
+  const expenses = useBillStore((s) => s.expenses);
+  const manualTotal = useBillStore((s) => s.manualTotal);
+  const people = useBillStore((s) => s.people);
+  const assignments = useBillStore((s) => s.assignments);
+  const splitMode = useBillStore((s) => s.splitMode);
+  const currency = useBillStore((s) => s.currency);
+
   const snapshotKey = useMemo(
-    () => JSON.stringify(storeSnapshot(store)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [store.receiptTitle, store.expenses, store.manualTotal, store.people, store.assignments, store.splitMode, store.currency],
+    () => JSON.stringify({ receiptTitle, expenses, manualTotal, people, assignments, splitMode, currency }),
+    [receiptTitle, expenses, manualTotal, people, assignments, splitMode, currency],
   );
 
   useEffect(() => {
@@ -136,7 +131,7 @@ export function useBillSync({ store, onBillLoaded }: UseBillSyncOptions) {
     debounceRef.current = setTimeout(() => {
       if (!billIdRef.current) return;
       setSaveStatus("saving");
-      patchMutation.mutate(storeSnapshot(storeRef.current));
+      patchMutation.mutate(storeSnapshot());
     }, 500);
   }, [snapshotKey, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -1,29 +1,41 @@
 import { useState } from "react";
-import { useExpenseStore } from "../useExpenseStore";
+import { useBillStore, useComputedStore } from "../store";
 import { PersonCard } from "./PersonCard";
 import { PersonPicker } from "./PersonPicker";
 
-interface PeopleSectionProps {
-  store: ReturnType<typeof useExpenseStore>;
-  settledDebtorIds: Set<string>;
-  setSettledDebtorIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-  settleSubMode: "payer" | "own";
-  handleSettleSubModeChange: (mode: "payer" | "own") => void;
-}
-
-export function PeopleSection({
-  store,
-  settledDebtorIds,
-  setSettledDebtorIds,
-  settleSubMode,
-  handleSettleSubModeChange,
-}: PeopleSectionProps) {
+export function PeopleSection() {
   const [showPicker, setShowPicker] = useState(false);
-  const isPaymentMode = store.viewMode === "settle";
-  const payer = store.payerId ? store.people.find(p => p.id === store.payerId) ?? null : null;
+
+  const viewMode = useBillStore((s) => s.viewMode);
+  const expenses = useBillStore((s) => s.expenses);
+  const payerId = useBillStore((s) => s.payerId);
+  const people = useBillStore((s) => s.people);
+  const currency = useBillStore((s) => s.currency);
+  const splitMode = useBillStore((s) => s.splitMode);
+  const assignmentMode = useBillStore((s) => s.assignmentMode);
+  const assignments = useBillStore((s) => s.assignments);
+  const focusNewId = useBillStore((s) => s.focusNewId);
+  const settledDebtorIds = useBillStore((s) => s.settledDebtorIds);
+  const settleSubMode = useBillStore((s) => s.settleSubMode);
+  const setPayerId = useBillStore((s) => s.setPayerId);
+  const setSettleSubMode = useBillStore((s) => s.setSettleSubMode);
+  const toggleSettledDebtor = useBillStore((s) => s.toggleSettledDebtor);
+  const toggleAssignment = useBillStore((s) => s.toggleAssignment);
+  const handlePersonFocus = useBillStore((s) => s.handlePersonFocus);
+  const updatePersonName = useBillStore((s) => s.updatePersonName);
+  const updatePersonAmount = useBillStore((s) => s.updatePersonAmount);
+  const removePerson = useBillStore((s) => s.removePerson);
+  const addPerson = useBillStore((s) => s.addPerson);
+  const setSplitMode = useBillStore((s) => s.setSplitMode);
+  const selectAllPeople = useBillStore((s) => s.selectAllPeople);
+
+  const { computedAmounts, total, inItemMode, inPersonMode, inAssignmentMode } = useComputedStore();
+
+  const isPaymentMode = viewMode === "settle";
+  const payer = payerId ? people.find(p => p.id === payerId) ?? null : null;
   const settleOrder = isPaymentMode && payer
-    ? [payer, ...store.people.filter(p => p.id !== store.payerId)]
-    : store.people;
+    ? [payer, ...people.filter(p => p.id !== payerId)]
+    : people;
 
   return (
     <div>
@@ -34,14 +46,14 @@ export function PeopleSection({
             <span className="text-xs font-medium text-espresso/40 uppercase tracking-wider">
               {settleSubMode === "own"
                 ? "Who owes"
-                : store.payerId ? "Paid by" : "Who paid?"}
+                : payerId ? "Paid by" : "Who paid?"}
             </span>
             <div className="flex gap-0.5 bg-cream-dark/50 rounded-lg p-0.5">
               {(["payer", "own"] as const).map((mode) => (
                 <button
                   key={mode}
                   type="button"
-                  onClick={() => handleSettleSubModeChange(mode)}
+                  onClick={() => setSettleSubMode(mode)}
                   className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all duration-200 ease-out ${
                     settleSubMode === mode
                       ? "bg-white text-espresso shadow-sm"
@@ -55,14 +67,14 @@ export function PeopleSection({
           </div>
           <ul className="divide-y divide-espresso/8">
             {settleOrder.map((person, index) => {
-              const isPayer = person.id === store.payerId;
+              const isPayer = person.id === payerId;
               const settleVariant: "select" | "payer" | "debt" =
                 settleSubMode === "own"
                   ? "debt"
-                  : !store.payerId ? "select" : isPayer ? "payer" : "debt";
+                  : !payerId ? "select" : isPayer ? "payer" : "debt";
               // Inject "Who owes" header as a <li> before the first debtor,
               // keeping PersonCard keys stable so FLIP animation stays intact.
-              const owesHeader = settleSubMode === "payer" && store.payerId && !isPayer && index === 1
+              const owesHeader = settleSubMode === "payer" && payerId && !isPayer && index === 1
                 ? <li key="h-owes" className="px-4 py-2"><span className="text-xs font-medium text-espresso/40 uppercase tracking-wider">Who owes</span></li>
                 : null;
               return [
@@ -72,15 +84,11 @@ export function PeopleSection({
                   settleVariant={settleVariant}
                   person={person}
                   index={index}
-                  currency={store.currency}
-                  computedAmount={isPayer ? store.total : (store.computedAmounts[person.id] || 0)}
-                  onSelectPayer={() => store.setPayerId(person.id)}
+                  currency={currency}
+                  computedAmount={isPayer ? total : (computedAmounts[person.id] || 0)}
+                  onSelectPayer={() => setPayerId(person.id)}
                   isSettled={settledDebtorIds.has(person.id)}
-                  onToggleSettled={() => setSettledDebtorIds(prev => {
-                    const next = new Set(prev);
-                    next.has(person.id) ? next.delete(person.id) : next.add(person.id);
-                    return next;
-                  })}
+                  onToggleSettled={() => toggleSettledDebtor(person.id)}
                 />,
               ];
             })}
@@ -90,13 +98,13 @@ export function PeopleSection({
         // ── Consumption mode ──────────────────────────
         <>
           <div className="flex items-center justify-between px-4 py-2 border-t border-separator">
-            {store.inItemMode ? (
+            {inItemMode ? (
               <button
                 type="button"
-                onClick={store.selectAllPeople}
+                onClick={selectAllPeople}
                 className="text-xs font-medium text-sage hover:text-sage/80 uppercase tracking-wider transition-colors"
               >
-                {store.assignmentMode!.type === "item" && (store.assignments[store.assignmentMode!.itemId] || []).length === store.people.length
+                {assignmentMode!.type === "item" && (assignments[assignmentMode!.itemId] || []).length === people.length
                   ? "Deselect All"
                   : "Select All"}
               </button>
@@ -110,9 +118,9 @@ export function PeopleSection({
                 <button
                   key={mode}
                   type="button"
-                  onClick={() => store.setSplitMode(mode)}
+                  onClick={() => setSplitMode(mode)}
                   className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
-                    store.splitMode === mode
+                    splitMode === mode
                       ? "bg-white text-espresso shadow-sm"
                       : "text-espresso/40 hover:text-espresso/60"
                   }`}
@@ -124,23 +132,23 @@ export function PeopleSection({
           </div>
 
           <ul className="divide-y divide-espresso/8">
-            {store.people.map((person, index) => {
-              const isEqual = store.splitMode === "equally";
-              const personAmount = store.computedAmounts[person.id] || 0;
+            {people.map((person, index) => {
+              const isEqual = splitMode === "equally";
+              const personAmount = computedAmounts[person.id] || 0;
               const displayedAmount = isEqual
                 ? personAmount > 0
                   ? personAmount.toFixed(2)
                   : ""
                 : person.amount;
 
-              const isActivePerson = store.inPersonMode && store.assignmentMode!.type === "person" && store.assignmentMode!.personId === person.id;
-              const isDimmedPerson = store.inPersonMode && !isActivePerson;
+              const isActivePerson = inPersonMode && assignmentMode!.type === "person" && assignmentMode!.personId === person.id;
+              const isDimmedPerson = inPersonMode && !isActivePerson;
               const isAssignedInItemMode =
-                store.inItemMode &&
-                store.assignmentMode!.type === "item" &&
-                (store.assignments[store.assignmentMode!.itemId] || []).includes(person.id);
-              const itemCount = store.expenses.filter(e =>
-                (store.assignments[e.id] || []).includes(person.id)
+                inItemMode &&
+                assignmentMode!.type === "item" &&
+                (assignments[assignmentMode!.itemId] || []).includes(person.id);
+              const itemCount = expenses.filter(e =>
+                (assignments[e.id] || []).includes(person.id)
               ).length;
 
               return (
@@ -148,24 +156,24 @@ export function PeopleSection({
                   key={person.id}
                   person={person}
                   index={index}
-                  currency={store.currency}
-                  computedAmount={store.computedAmounts[person.id] || 0}
+                  currency={currency}
+                  computedAmount={computedAmounts[person.id] || 0}
                   displayedAmount={displayedAmount}
                   isEqual={isEqual}
                   isActivePerson={isActivePerson}
                   isDimmedPerson={isDimmedPerson}
-                  isItemModeRow={store.inItemMode}
+                  isItemModeRow={inItemMode}
                   isAssignedInItemMode={isAssignedInItemMode}
-                  focusNewId={store.focusNewId}
+                  focusNewId={focusNewId}
                   itemCount={itemCount}
                   onToggleAssignment={() =>
-                    store.assignmentMode?.type === "item" &&
-                    store.toggleAssignment(store.assignmentMode.itemId, person.id)
+                    assignmentMode?.type === "item" &&
+                    toggleAssignment(assignmentMode.itemId, person.id)
                   }
-                  onPersonFocus={() => store.handlePersonFocus(person.id)}
-                  onUpdateName={(name) => store.updatePersonName(person.id, name)}
-                  onUpdateAmount={(amount) => store.updatePersonAmount(person.id, amount)}
-                  onRemove={() => store.removePerson(person.id)}
+                  onPersonFocus={() => handlePersonFocus(person.id)}
+                  onUpdateName={(name) => updatePersonName(person.id, name)}
+                  onUpdateAmount={(amount) => updatePersonAmount(person.id, amount)}
+                  onRemove={() => removePerson(person.id)}
                 />
               );
             })}
@@ -174,7 +182,7 @@ export function PeopleSection({
           {/* Add Person Button */}
           <button
             onClick={() => setShowPicker(true)}
-            className={`w-full flex items-center gap-2 pl-4 pr-3 py-2.5 border-t border-separator text-sm font-medium text-terracotta hover:bg-cream-dark/40 transition-all ${store.inAssignmentMode ? "invisible" : ""}`}
+            className={`w-full flex items-center gap-2 pl-4 pr-3 py-2.5 border-t border-separator text-sm font-medium text-terracotta hover:bg-cream-dark/40 transition-all ${inAssignmentMode ? "invisible" : ""}`}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -184,9 +192,9 @@ export function PeopleSection({
 
           {showPicker && (
             <PersonPicker
-              existingTelegramIds={new Set(store.people.map(p => p.telegramId).filter((id): id is number => id != null))}
-              existingNames={new Set(store.people.filter(p => p.telegramId == null).map(p => p.name.toLowerCase()))}
-              onAdd={(init) => store.addPerson(init)}
+              existingTelegramIds={new Set(people.map(p => p.telegramId).filter((id): id is number => id != null))}
+              existingNames={new Set(people.filter(p => p.telegramId == null).map(p => p.name.toLowerCase()))}
+              onAdd={(init) => addPerson(init)}
               onClose={() => setShowPicker(false)}
             />
           )}

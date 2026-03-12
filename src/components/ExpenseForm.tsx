@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useExpenseStore } from "../useExpenseStore";
 import { useBillSync } from "../useBillSync";
+import { useBillStore, useComputedStore } from "../store";
 import { shareBill } from "../api";
 import { ItemsSection } from "./ItemsSection";
 import { PeopleSection } from "./PeopleSection";
@@ -10,32 +10,31 @@ import { CurrencySelector } from "./CurrencySelector";
 import { ReceiptScanner } from "./ReceiptScanner";
 
 export function ExpenseForm() {
-  const store = useExpenseStore();
-  const { billId, loading, error, isCreator, saveStatus } = useBillSync({
-    store,
-    onBillLoaded: store.loadBill,
-  });
+  const { billId, loading, error, isCreator, saveStatus } = useBillSync();
   const navigate = useNavigate();
   const formRef = useRef<HTMLDivElement>(null);
   const [showCurrencySelector, setShowCurrencySelector] = useState(false);
   const [showReceiptScanner, setShowReceiptScanner] = useState(false);
   const [shareStatus, setShareStatus] = useState<"idle" | "sending" | "sent" | "error" | "no-chat">("idle");
-  const [settledDebtorIds, setSettledDebtorIds] = useState<Set<string>>(new Set());
   const [focusedExpenseId, setFocusedExpenseId] = useState<string | null>(null);
-  const [settleSubMode, setSettleSubMode] = useState<"payer" | "own">("payer");
+
+  const receiptTitle = useBillStore((s) => s.receiptTitle);
+  const setReceiptTitle = useBillStore((s) => s.setReceiptTitle);
+  const viewMode = useBillStore((s) => s.viewMode);
+  const setViewMode = useBillStore((s) => s.setViewMode);
+  const exitAssignmentMode = useBillStore((s) => s.exitAssignmentMode);
+  const payerId = useBillStore((s) => s.payerId);
+  const people = useBillStore((s) => s.people);
+  const currency = useBillStore((s) => s.currency);
+  const setCurrency = useBillStore((s) => s.setCurrency);
+  const initCurrencyDetection = useBillStore((s) => s.initCurrencyDetection);
+  const settleSubMode = useBillStore((s) => s.settleSubMode);
+
+  const computed = useComputedStore();
 
   useEffect(() => {
-    setSettledDebtorIds(new Set());
-  }, [store.payerId]);
-
-  const handleSettleSubModeChange = (mode: "payer" | "own") => {
-    if (mode === settleSubMode) return;
-    setSettleSubMode(mode);
-    setSettledDebtorIds(new Set());
-    if (mode === "own" && store.payerId) {
-      store.setPayerId(store.payerId);
-    }
-  };
+    initCurrencyDetection();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleEnterNav = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Enter" || !(e.target instanceof HTMLInputElement)) return;
@@ -74,29 +73,9 @@ export function ExpenseForm() {
     };
   }, []);
 
-  const isPaymentMode = store.viewMode === "settle";
-  const payer = store.payerId ? store.people.find(p => p.id === store.payerId) ?? null : null;
+  const isPaymentMode = viewMode === "settle";
+  const payer = payerId ? people.find(p => p.id === payerId) ?? null : null;
   const payerName = payer?.name || "";
-
-  const summaryCoveredAmount = !isPaymentMode
-    ? store.coveredAmount
-    : settleSubMode === "own"
-      ? store.people.filter(p => settledDebtorIds.has(p.id)).reduce((sum, p) => sum + (store.computedAmounts[p.id] || 0), 0)
-      : store.payerId ? (store.computedAmounts[store.payerId] || 0) : 0;
-
-  const summaryRemaining = !isPaymentMode
-    ? store.remaining
-    : settleSubMode === "own"
-      ? store.people.filter(p => !settledDebtorIds.has(p.id)).reduce((sum, p) => sum + (store.computedAmounts[p.id] || 0), 0)
-      : !store.payerId
-        ? store.total
-        : store.people.filter(p => p.id !== store.payerId && !settledDebtorIds.has(p.id)).reduce((sum, p) => sum + (store.computedAmounts[p.id] || 0), 0);
-
-  const summaryIsBalanced = !isPaymentMode
-    ? store.isBalanced
-    : settleSubMode === "own"
-      ? store.people.every(p => settledDebtorIds.has(p.id))
-      : !!store.payerId && store.people.filter(p => p.id !== store.payerId).every(p => settledDebtorIds.has(p.id));
 
   if (loading) {
     return (
@@ -120,8 +99,8 @@ export function ExpenseForm() {
       className="min-h-screen bg-cream pt-3 pb-8"
       onKeyDown={handleEnterNav}
       onClick={(e) => {
-        if (store.inAssignmentMode && e.target === e.currentTarget) {
-          store.exitAssignmentMode();
+        if (computed.inAssignmentMode && e.target === e.currentTarget) {
+          exitAssignmentMode();
         }
       }}
     >
@@ -150,8 +129,8 @@ export function ExpenseForm() {
         <div className="flex items-center gap-2">
           <input
             type="text"
-            value={store.receiptTitle}
-            onChange={(e) => store.setReceiptTitle(e.target.value)}
+            value={receiptTitle}
+            onChange={(e) => setReceiptTitle(e.target.value)}
             placeholder="Receipt title"
             className="flex-1 bg-transparent text-base font-semibold text-espresso tracking-tight outline-none placeholder:text-espresso/30 focus:placeholder:text-espresso/20"
           />
@@ -172,39 +151,32 @@ export function ExpenseForm() {
       </div>
 
       <ItemsSection
-        store={store}
         focusedExpenseId={focusedExpenseId}
         setFocusedExpenseId={setFocusedExpenseId}
         setShowCurrencySelector={setShowCurrencySelector}
       />
 
-      <PeopleSection
-        store={store}
-        settledDebtorIds={settledDebtorIds}
-        setSettledDebtorIds={setSettledDebtorIds}
-        settleSubMode={settleSubMode}
-        handleSettleSubModeChange={handleSettleSubModeChange}
-      />
+      <PeopleSection />
 
       {/* Summary */}
-      {!store.inAssignmentMode && (
+      {!computed.inAssignmentMode && (
         <SummarySection
-          currency={store.currency}
+          currency={currency}
           isSettleMode={isPaymentMode}
           payerName={isPaymentMode && settleSubMode === "payer" ? payerName : undefined}
-          coveredAmount={summaryCoveredAmount}
-          remaining={summaryRemaining}
-          isBalanced={summaryIsBalanced}
-          isOver={isPaymentMode ? false : store.isOver}
-          hasPeople={store.people.length > 0}
-          canSubmit={store.isBalanced && store.people.length > 0 && store.total > 0}
-          viewMode={store.viewMode}
-          setViewMode={store.setViewMode}
+          coveredAmount={computed.summaryCoveredAmount}
+          remaining={computed.summaryRemaining}
+          isBalanced={computed.summaryIsBalanced}
+          isOver={isPaymentMode ? false : computed.isOver}
+          hasPeople={people.length > 0}
+          canSubmit={computed.isBalanced && people.length > 0 && computed.total > 0}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
         />
       )}
 
       {/* Share button — Telegram only, creator only, not in assignment mode */}
-      {tg && billId && isCreator && !store.inAssignmentMode && !!tg.initDataUnsafe?.chat && (
+      {tg && billId && isCreator && !computed.inAssignmentMode && !!tg.initDataUnsafe?.chat && (
         <div className="px-4 pt-2 pb-4">
           <button
             disabled={shareStatus === "sending"}
@@ -236,7 +208,6 @@ export function ExpenseForm() {
       {/* Receipt Scanner */}
       {showReceiptScanner && (
         <ReceiptScanner
-          store={store}
           onClose={() => setShowReceiptScanner(false)}
         />
       )}
@@ -244,10 +215,10 @@ export function ExpenseForm() {
       {/* Currency Selector */}
       {showCurrencySelector && (
         <CurrencySelector
-          currency={store.currency}
-          localCurrency={store.currency}
+          currency={currency}
+          localCurrency={currency}
           onSelect={(code) => {
-            store.setCurrency(code);
+            setCurrency(code);
             setShowCurrencySelector(false);
           }}
           onClose={() => setShowCurrencySelector(false)}

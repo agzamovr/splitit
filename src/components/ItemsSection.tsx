@@ -1,33 +1,50 @@
 import { formatAmount, getCurrencySymbol } from "../currency";
-import { useExpenseStore } from "../useExpenseStore";
+import { useBillStore, useComputedStore } from "../store";
 import { ExpenseRow } from "./ExpenseRow";
 
 interface ItemsSectionProps {
-  store: ReturnType<typeof useExpenseStore>;
   focusedExpenseId: string | null;
   setFocusedExpenseId: (id: string | null) => void;
   setShowCurrencySelector: (show: boolean) => void;
 }
 
 export function ItemsSection({
-  store,
   focusedExpenseId,
   setFocusedExpenseId,
   setShowCurrencySelector,
 }: ItemsSectionProps) {
-  const isPaymentMode = store.viewMode === "settle";
+  const viewMode = useBillStore((s) => s.viewMode);
+  const expenses = useBillStore((s) => s.expenses);
+  const assignments = useBillStore((s) => s.assignments);
+  const currency = useBillStore((s) => s.currency);
+  const manualTotal = useBillStore((s) => s.manualTotal);
+  const assignmentMode = useBillStore((s) => s.assignmentMode);
+  const focusNewId = useBillStore((s) => s.focusNewId);
+  const updateExpensePricingMode = useBillStore((s) => s.updateExpensePricingMode);
+  const toggleAssignment = useBillStore((s) => s.toggleAssignment);
+  const handleItemFocus = useBillStore((s) => s.handleItemFocus);
+  const updateExpenseDescription = useBillStore((s) => s.updateExpenseDescription);
+  const updateExpensePrice = useBillStore((s) => s.updateExpensePrice);
+  const removeExpense = useBillStore((s) => s.removeExpense);
+  const setManualTotal = useBillStore((s) => s.setManualTotal);
+  const addExpense = useBillStore((s) => s.addExpense);
+  const selectAllItems = useBillStore((s) => s.selectAllItems);
+
+  const { hasItems, total, inItemMode, inPersonMode, inAssignmentMode } = useComputedStore();
+
+  const isPaymentMode = viewMode === "settle";
 
   return (
     <div className="border-b border-separator">
-      {!isPaymentMode && store.expenses.length > 0 && (
+      {!isPaymentMode && expenses.length > 0 && (
         <div className="flex items-center justify-between px-4 pt-3 pb-1">
-          {store.inPersonMode ? (
+          {inPersonMode ? (
             <button
               type="button"
-              onClick={store.selectAllItems}
+              onClick={selectAllItems}
               className="text-xs font-medium text-sage hover:text-sage/80 uppercase tracking-wider transition-colors"
             >
-              {store.expenses.every((e) => (store.assignments[e.id] || []).includes(store.assignmentMode!.type === "person" ? store.assignmentMode!.personId : ""))
+              {expenses.every((e) => (assignments[e.id] || []).includes(assignmentMode!.type === "person" ? assignmentMode!.personId : ""))
                 ? "Deselect All"
                 : "Select All"}
             </button>
@@ -37,11 +54,11 @@ export function ItemsSection({
             </span>
           )}
           {(() => {
-            const visible = !store.inPersonMode && (store.inItemMode || focusedExpenseId !== null);
-            const activeItemId = store.inItemMode
-              ? (store.assignmentMode as { type: "item"; itemId: string }).itemId
+            const visible = !inPersonMode && (inItemMode || focusedExpenseId !== null);
+            const activeItemId = inItemMode
+              ? (assignmentMode as { type: "item"; itemId: string }).itemId
               : focusedExpenseId;
-            const activeExpense = activeItemId ? store.expenses.find(e => e.id === activeItemId) : undefined;
+            const activeExpense = activeItemId ? expenses.find(e => e.id === activeItemId) : undefined;
             const activeMode = activeExpense?.pricingMode ?? "total";
             return (
               <div className={`flex gap-0.5 bg-cream-dark/50 rounded-lg p-0.5 ${visible ? "" : "invisible"}`}>
@@ -50,7 +67,7 @@ export function ItemsSection({
                     key={mode}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => activeItemId && store.updateExpensePricingMode(activeItemId, mode)}
+                    onClick={() => activeItemId && updateExpensePricingMode(activeItemId, mode)}
                     className={`px-2.5 py-1 text-xs font-medium rounded-md ${visible ? "transition-all duration-200 ease-out" : ""} ${
                       activeMode === mode
                         ? "bg-white text-espresso shadow-sm"
@@ -66,16 +83,16 @@ export function ItemsSection({
         </div>
       )}
 
-      {!isPaymentMode && store.expenses.length > 0 && (
+      {!isPaymentMode && expenses.length > 0 && (
         <ul className="divide-y divide-espresso/8">
-          {store.expenses.map((expense, index) => {
-            const assignedCount = (store.assignments[expense.id] || []).length;
-            const isActiveItem = store.inItemMode && store.assignmentMode!.type === "item" && store.assignmentMode!.itemId === expense.id;
-            const isDimmedItem = store.inItemMode && !isActiveItem;
+          {expenses.map((expense, index) => {
+            const assignedCount = (assignments[expense.id] || []).length;
+            const isActiveItem = inItemMode && assignmentMode!.type === "item" && assignmentMode!.itemId === expense.id;
+            const isDimmedItem = inItemMode && !isActiveItem;
             const isAssignedInPersonMode =
-              store.inPersonMode &&
-              store.assignmentMode!.type === "person" &&
-              (store.assignments[expense.id] || []).includes(store.assignmentMode!.personId);
+              inPersonMode &&
+              assignmentMode!.type === "person" &&
+              (assignments[expense.id] || []).includes(assignmentMode!.personId);
 
             return (
               <ExpenseRow
@@ -83,26 +100,26 @@ export function ItemsSection({
                 expense={expense}
                 index={index}
                 assignedCount={assignedCount}
-                currency={store.currency}
+                currency={currency}
                 isActiveItem={isActiveItem}
                 isDimmedItem={isDimmedItem}
-                isPersonModeRow={store.inPersonMode}
+                isPersonModeRow={inPersonMode}
                 isAssignedInPersonMode={isAssignedInPersonMode}
-                focusNewId={store.focusNewId}
+                focusNewId={focusNewId}
                 onToggleAssignment={() =>
-                  store.assignmentMode?.type === "person" &&
-                  store.toggleAssignment(expense.id, store.assignmentMode.personId)
+                  assignmentMode?.type === "person" &&
+                  toggleAssignment(expense.id, assignmentMode.personId)
                 }
-                onItemFocus={() => { store.handleItemFocus(expense.id); setFocusedExpenseId(null); }}
-                onUpdateDescription={(desc) => store.updateExpenseDescription(expense.id, desc)}
-                onUpdatePrice={(price) => store.updateExpensePrice(expense.id, price)}
+                onItemFocus={() => { handleItemFocus(expense.id); setFocusedExpenseId(null); }}
+                onUpdateDescription={(desc) => updateExpenseDescription(expense.id, desc)}
+                onUpdatePrice={(price) => updateExpensePrice(expense.id, price)}
                 onRowFocus={() => setFocusedExpenseId(expense.id)}
                 onRowBlur={(e) => {
                   if (!e.currentTarget.contains(e.relatedTarget as Node)) {
                     setFocusedExpenseId(null);
                   }
                 }}
-                onRemove={() => store.removeExpense(expense.id)}
+                onRemove={() => removeExpense(expense.id)}
               />
             );
           })}
@@ -115,7 +132,7 @@ export function ItemsSection({
           Total
         </span>
         <div className="flex-1 flex items-center justify-end gap-2">
-          {store.hasItems ? (
+          {hasItems ? (
             <span className="text-xl font-display font-bold text-espresso flex items-baseline gap-0.5">
               <button
                 type="button"
@@ -123,12 +140,12 @@ export function ItemsSection({
                 className="text-xs font-body font-semibold text-espresso/40 border-b border-dashed border-espresso/30 hover:text-espresso/60 hover:border-espresso/50 transition-colors leading-none"
                 title="Change currency"
               >
-                {getCurrencySymbol(store.currency)}
+                {getCurrencySymbol(currency)}
               </button>
-              {formatAmount(store.total, store.currency)}
+              {formatAmount(total, currency)}
             </span>
           ) : (() => {
-            const sym = getCurrencySymbol(store.currency);
+            const sym = getCurrencySymbol(currency);
             const symTextClass = 'text-xs font-semibold';
             const inputPl = sym.length <= 1 ? 'pl-8' : sym.length <= 2 ? 'pl-9' : 'pl-10';
             return (
@@ -145,8 +162,8 @@ export function ItemsSection({
                   type="number"
                   inputMode="decimal"
                   enterKeyHint="go"
-                  value={store.manualTotal}
-                  onChange={(e) => store.setManualTotal(e.target.value)}
+                  value={manualTotal}
+                  onChange={(e) => setManualTotal(e.target.value)}
                   placeholder="0.00"
                   className={`input-glow w-full ${inputPl} pr-3 py-1.5 text-xl font-display font-bold text-right text-espresso bg-cream-dark/50 rounded-lg border border-transparent focus:border-terracotta/30 focus:bg-white outline-none transition-all placeholder:text-espresso/20`}
                 />
@@ -156,8 +173,8 @@ export function ItemsSection({
           {!isPaymentMode && (
             <button
               type="button"
-              onClick={store.addExpense}
-              className={`w-7 h-7 rounded-full bg-terracotta/10 text-terracotta hover:bg-terracotta/20 active:bg-terracotta/30 flex items-center justify-center transition-colors ${store.inAssignmentMode ? "invisible" : ""}`}
+              onClick={addExpense}
+              className={`w-7 h-7 rounded-full bg-terracotta/10 text-terracotta hover:bg-terracotta/20 active:bg-terracotta/30 flex items-center justify-center transition-colors ${inAssignmentMode ? "invisible" : ""}`}
               aria-label="Add expense"
             >
               <svg

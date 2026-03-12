@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import type { ParsedReceipt } from "../useExpenseStore";
-import type { useExpenseStore } from "../useExpenseStore";
-
-type Store = ReturnType<typeof useExpenseStore>;
+import { useBillStore, type ParsedReceipt } from "../store";
 
 interface Props {
-  store: Store;
   onClose: () => void;
 }
 
@@ -51,7 +47,8 @@ async function resizeImage(file: File | Blob, maxWidth = 1500): Promise<Blob> {
   });
 }
 
-export function ReceiptScanner({ store, onClose }: Props) {
+export function ReceiptScanner({ onClose }: Props) {
+  const applyParsedReceipt = useBillStore((s) => s.applyParsedReceipt);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [preview, setPreview] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -91,7 +88,7 @@ export function ReceiptScanner({ store, onClose }: Props) {
         throw new Error(data.error ?? `Server error ${res.status}`);
       }
 
-      store.applyParsedReceipt(data);
+      applyParsedReceipt(data);
       setStatus("success");
       setTimeout(() => onClose(), 800);
     } catch (err) {
