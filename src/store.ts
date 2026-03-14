@@ -16,13 +16,51 @@ import {
 } from "./computations";
 import { detectCurrency, detectCurrencyFromEdge } from "./currency";
 import type { BillPayload } from "./api";
+import { object, string, number, optional, array, union, literal, record, type InferOutput } from "valibot";
 
-export interface ParsedReceipt {
-  receiptTitle?: string;
-  expenses?: { description: string; price: string }[];
-  manualTotal?: string;
-  currency?: string;
-}
+export const ParsedReceiptSchema = object({
+  receiptTitle: optional(string()),
+  expenses: optional(array(object({
+    description: string(),
+    price: string(),
+  }))),
+  manualTotal: optional(string()),
+  currency: optional(string()),
+  error: optional(string()),
+});
+
+export type ParsedReceipt = InferOutput<typeof ParsedReceiptSchema>;
+
+const ExpenseSchema = object({
+  id: string(),
+  description: string(),
+  price: string(),
+  pricingMode: union([literal("total"), literal("each")]),
+});
+
+const PersonSchema = object({
+  id: string(),
+  name: string(),
+  amount: string(),
+  paid: string(),
+  telegramId: optional(number()),
+  photoUrl: optional(string()),
+});
+
+export const BillSchema = object({
+  id: string(),
+  creatorTelegramId: number(),
+  chatId: optional(number()),
+  createdAt: number(),
+  receiptTitle: string(),
+  expenses: array(ExpenseSchema),
+  manualTotal: string(),
+  people: array(PersonSchema),
+  assignments: record(string(), array(string())),
+  splitMode: union([literal("equally"), literal("amounts")]),
+  currency: string(),
+  version: number(),
+});
 
 function getDefaultReceiptTitle(date: Date): string {
   const hour = date.getHours();

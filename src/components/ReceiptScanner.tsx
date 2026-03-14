@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useBillStore, type ParsedReceipt } from "../store";
+import { safeParse } from "valibot";
+import { useBillStore, ParsedReceiptSchema } from "../store";
 
 interface Props {
   onClose: () => void;
@@ -83,12 +84,19 @@ export function ReceiptScanner({ onClose }: Props) {
         body: JSON.stringify({ image: base64, mimeType: "image/jpeg" }),
       });
 
-      const data = await res.json() as ParsedReceipt & { error?: string };
-      if (!res.ok || data.error) {
-        throw new Error(data.error ?? `Server error ${res.status}`);
+      const raw = await res.json() as Record<string, unknown>;
+      if (!res.ok) {
+        throw new Error(typeof raw.error === "string" ? raw.error : `Server error ${res.status}`);
+      }
+      const result = safeParse(ParsedReceiptSchema, raw);
+      if (!result.success) {
+        throw new Error("Invalid receipt data from server");
+      }
+      if (result.output.error) {
+        throw new Error(result.output.error);
       }
 
-      applyParsedReceipt(data);
+      applyParsedReceipt(result.output);
       setStatus("success");
       setTimeout(() => onClose(), 800);
     } catch (err) {

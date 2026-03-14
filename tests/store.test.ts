@@ -1,5 +1,6 @@
 import { beforeEach, describe, it, expect } from "vitest";
-import { useBillStore } from "../src/store";
+import { safeParse } from "valibot";
+import { useBillStore, ParsedReceiptSchema } from "../src/store";
 
 beforeEach(() => {
   useBillStore.setState(useBillStore.getInitialState());
@@ -15,6 +16,24 @@ describe("applyParsedReceipt", () => {
     expect(assignments).toEqual({});
     expect(manualTotal).toBe("42.50");
     expect(receiptTitle).toBe("Lunch");
+  });
+});
+
+describe("ParsedReceiptSchema", () => {
+  it("rejects malformed receipt with missing expense description", () => {
+    const result = safeParse(ParsedReceiptSchema, {
+      expenses: [{ price: "10.00" }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a valid receipt with expenses and optional fields", () => {
+    const result = safeParse(ParsedReceiptSchema, {
+      receiptTitle: "Lunch",
+      expenses: [{ description: "Pizza", price: "12.00" }],
+      currency: "USD",
+    });
+    expect(result.success).toBe(true);
   });
 });
 

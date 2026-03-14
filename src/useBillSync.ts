@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { safeParse } from "valibot";
 import { createBill, getBill, patchBill, isWebAuthenticated, type BillPayload } from "./api";
 import { billKeys } from "./queryKeys";
-import { useBillStore } from "./store";
+import { useBillStore, BillSchema } from "./store";
 
 function storeSnapshot(): BillPayload {
   const s = useBillStore.getState();
@@ -81,15 +82,20 @@ export function useBillSync() {
   useEffect(() => {
     if (!remoteBill) return;
     if (remoteBill.version <= versionRef.current) return;
+    const result = safeParse(BillSchema, remoteBill);
+    if (!result.success) {
+      setError("Bill data is invalid — please reload");
+      return;
+    }
     loadedFromServerRef.current = true;
-    versionRef.current = remoteBill.version;
+    versionRef.current = result.output.version;
     if (!isCreatorSetRef.current) {
       isCreatorSetRef.current = true;
       const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-      setIsCreator(tgUser ? remoteBill.creatorTelegramId === tgUser.id : false);
+      setIsCreator(tgUser ? result.output.creatorTelegramId === tgUser.id : false);
     }
     setLoading(false);
-    useBillStore.getState().loadBill(remoteBill);
+    useBillStore.getState().loadBill(result.output);
   }, [remoteBill]);
 
   const patchMutation = useMutation({

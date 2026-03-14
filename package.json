@@ -19,6 +19,7 @@
     "@tanstack/router-devtools": "^1.157.18",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "valibot": "^1.2.0",
     "zustand": "^5.0.11"
   },
   "pnpm": {
