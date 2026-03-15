@@ -213,7 +213,7 @@ test.describe("Web-authenticated users", () => {
     await page.route("/api/bills/web-bill-id", (route) =>
       route.fulfill({
         json: {
-          id: "web-bill-id", creatorTelegramId: 0, version: 1,
+          id: "web-bill-id", creatorTelegramId: 0, version: 1, createdAt: 1_700_000_000_000,
           receiptTitle: "Web Dinner", expenses: [], manualTotal: "42",
           people: [], assignments: {}, splitMode: "equally", currency: "USD",
         },
@@ -238,7 +238,7 @@ test.describe("Web-authenticated users", () => {
     await page.route("/api/bills/new-web-bill", (route) =>
       route.fulfill({
         json: {
-          id: "new-web-bill", creatorTelegramId: 0, version: 1,
+          id: "new-web-bill", creatorTelegramId: 0, version: 1, createdAt: 1_700_000_000_000,
           receiptTitle: "", expenses: [], manualTotal: "",
           people: [], assignments: {}, splitMode: "equally", currency: "USD",
         },
@@ -263,7 +263,7 @@ test.describe("Web-authenticated users", () => {
       if (route.request().method() === "GET") {
         await route.fulfill({
           json: {
-            id: "patch-web-bill", creatorTelegramId: 0, version: 1,
+            id: "patch-web-bill", creatorTelegramId: 0, version: 1, createdAt: 1_700_000_000_000,
             receiptTitle: "", expenses: [], manualTotal: "",
             people: [], assignments: {}, splitMode: "equally", currency: "USD",
           },
@@ -275,7 +275,7 @@ test.describe("Web-authenticated users", () => {
     await page.route("**/api/bills/patch-web-bill", async (route) => {
       if (route.request().method() === "PATCH") {
         patchBody = route.request().postDataJSON();
-        await route.fulfill({ json: { id: "patch-web-bill", version: 2, receiptTitle: "Lunch", expenses: [], manualTotal: "", people: [], assignments: {}, splitMode: "equally", currency: "USD" } });
+        await route.fulfill({ json: { id: "patch-web-bill", version: 2, createdAt: 1_700_000_000_000, receiptTitle: "Lunch", expenses: [], manualTotal: "", people: [], assignments: {}, splitMode: "equally", currency: "USD" } });
       } else {
         await route.continue();
       }
