@@ -13,3 +13,4 @@
 ## After implementation
 
 - Always run `tsc` after implementing a change to catch type errors before committing.
+- Always run `pnpm lint` after implementing a change to catch lint errors before committing.

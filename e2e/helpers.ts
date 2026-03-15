@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/triple-slash-reference
 /// <reference path="../src/telegram.d.ts" />
 import type { Page } from "@playwright/test";
 

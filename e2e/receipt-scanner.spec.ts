@@ -111,7 +111,6 @@ test("new expenses are assigned to all people", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Take Photo" })).not.toBeVisible({ timeout: 3000 });
 
   // Each person should show a non-zero amount (expenses assigned to all people)
-  const personAmounts = page.locator('input[type="number"][placeholder="0.00"]').filter({ hasText: "" });
   // Verify expenses exist (descriptions are filled)
   const descriptions = page.locator('input[placeholder="Description"]');
   await expect(descriptions).toHaveCount(2);

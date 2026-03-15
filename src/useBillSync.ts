@@ -40,6 +40,7 @@ export function useBillSync() {
   // Mount: create new bill if no billId in URL
   useEffect(() => {
     if (!isAuthenticated) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (billId) { setLoading(false); return; } // useQuery handles existing bill
 
     let mounted = true;
@@ -84,6 +85,7 @@ export function useBillSync() {
     if (remoteBill.version <= versionRef.current) return;
     const result = safeParse(BillSchema, remoteBill);
     if (!result.success) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError("Bill data is invalid — please reload");
       return;
     }

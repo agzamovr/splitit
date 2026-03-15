@@ -196,7 +196,7 @@ export const useBillStore = create<BillStore>()((set, get) => ({
   toggleSettledDebtor: (personId) =>
     set((s) => {
       const next = new Set(s.settledDebtorIds);
-      next.has(personId) ? next.delete(personId) : next.add(personId);
+      if (next.has(personId)) next.delete(personId); else next.add(personId);
       return { settledDebtorIds: next };
     }),
 

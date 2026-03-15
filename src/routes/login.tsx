@@ -37,6 +37,7 @@ function LoginPage() {
     const verifier = sessionStorage.getItem("pkce_verifier");
     if (!code || !verifier) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStatus("exchanging");
     sessionStorage.removeItem("pkce_verifier");
     window.history.replaceState({}, "", window.location.pathname);

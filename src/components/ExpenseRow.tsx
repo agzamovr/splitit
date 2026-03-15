@@ -21,6 +21,17 @@ interface ExpenseRowProps {
   onRemove: () => void;
 }
 
+function PeopleIcon({ assignedCount }: { assignedCount: number }) {
+  return (
+    <span className="relative">
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+      </svg>
+      <span className="absolute -bottom-1.5 -right-1.5 text-[9px] font-bold leading-none">{assignedCount}</span>
+    </span>
+  );
+}
+
 export function ExpenseRow({
   expense,
   index,
@@ -30,7 +41,7 @@ export function ExpenseRow({
   isDimmedItem,
   isPersonModeRow,
   isAssignedInPersonMode,
-  focusNewId,
+  focusNewId: focusNewIdRef,
   onToggleAssignment,
   onItemFocus,
   onUpdateDescription,
@@ -45,21 +56,12 @@ export function ExpenseRow({
   const priceChars = Math.max(5, expense.price?.length || 4) + 4;
   const descInputRef = useRef<HTMLInputElement>(null);
   useLayoutEffect(() => {
-    if (focusNewId.current === expense.id && descInputRef.current) {
+    if (focusNewIdRef.current === expense.id && descInputRef.current) {
       descInputRef.current.focus();
       descInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-      focusNewId.current = null;
+      focusNewIdRef.current = null;
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const PeopleIcon = () => (
-    <span className="relative">
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-      </svg>
-      <span className="absolute -bottom-1.5 -right-1.5 text-[9px] font-bold leading-none">{assignedCount}</span>
-    </span>
-  );
 
   return (
     <li
@@ -77,7 +79,7 @@ export function ExpenseRow({
           }`}
         >
           <span className="flex-shrink-0 mt-1 w-8 h-8 flex items-center justify-center text-sage">
-            <PeopleIcon />
+            <PeopleIcon assignedCount={assignedCount} />
           </span>
 
           <span className="flex-1 min-w-0 px-3 py-1.5 border border-transparent text-left text-base sm:text-sm font-medium text-espresso break-words">
@@ -126,7 +128,7 @@ export function ExpenseRow({
             aria-label="Assign people to this expense"
             title={`${assignedCount} people assigned`}
           >
-            <PeopleIcon />
+            <PeopleIcon assignedCount={assignedCount} />
           </button>
 
           <div className="flex-1 min-w-0 flex flex-wrap items-start gap-x-3 gap-y-1.5">

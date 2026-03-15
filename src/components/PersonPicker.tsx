@@ -107,6 +107,7 @@ function SuggestedRow({
   const [editValue, setEditValue] = useState(person.name);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (isEditing) setEditValue(person.name);
   }, [isEditing, person.name]);
 

@@ -57,7 +57,7 @@ export function ExpenseForm() {
     tg.setHeaderColor('secondary_bg_color');
     tg.setBackgroundColor('bg_color');
     tg.setBottomBarColor('secondary_bg_color');
-  }, []);
+  }, [tg]);
 
   // When a specific bill is opened from the bills list, show Telegram back button → /bills
   useEffect(() => {
@@ -71,7 +71,7 @@ export function ExpenseForm() {
       tg.BackButton.hide();
       tg.BackButton.offClick(goBack);
     };
-  }, []);
+  }, [tg, navigate]);
 
   const isPaymentMode = viewMode === "settle";
   const payer = payerId ? people.find(p => p.id === payerId) ?? null : null;

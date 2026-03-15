@@ -126,7 +126,7 @@ function PersonCardSettle({
     const cleanup = () => { el.style.transition = ''; };
     el.addEventListener('transitionend', cleanup, { once: true });
     return () => { el.removeEventListener('transitionend', cleanup); };
-  }, [settleVariant, index]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [settleVariant, index]);
 
   return (
     <li
@@ -181,7 +181,7 @@ function PersonCardConsumptionEdit({
   isEqual = false,
   isActivePerson = false,
   isDimmedPerson = false,
-  focusNewId,
+  focusNewId: focusNewIdRef,
   onPersonFocus,
   onUpdateName,
   onUpdateAmount,
@@ -194,12 +194,12 @@ function PersonCardConsumptionEdit({
   const amountChars = Math.max(5, displayedAmount?.length || 4) + sym.length + 2;
   const inputRef = useRef<HTMLInputElement>(null);
   useLayoutEffect(() => {
-    if (focusNewId?.current === person.id && inputRef.current) {
+    if (focusNewIdRef?.current === person.id && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-      focusNewId.current = null;
+      focusNewIdRef.current = null;
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [focusNewIdRef, person.id]);
 
   return (
     <li

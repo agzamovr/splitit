@@ -150,7 +150,7 @@ function BillsPage() {
       .catch(() => {
         window.location.href = "/login";
       });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const { data: bills, isLoading } = useQuery({
     queryKey: billKeys.list(),

@@ -67,6 +67,7 @@ export function getCurrencySymbol(currency: string): string {
     const symbol = parts.find((p) => p.type === 'currency')?.value ?? currency;
     // Fall back to ISO code if symbol contains non-Latin/non-ASCII-currency characters
     // (e.g. Cyrillic "сўм" for UZS, Arabic script, etc.)
+    // eslint-disable-next-line no-control-regex
     if (/[^\u0000-\u024F\u20A0-\u20CF]/.test(symbol)) return currency;
     return symbol;
   } catch {

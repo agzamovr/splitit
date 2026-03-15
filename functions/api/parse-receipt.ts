@@ -86,7 +86,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         body: JSON.stringify(geminiBody),
       }
     );
-  } catch (err) {
+  } catch {
     return json({ error: "Failed to reach Gemini API" }, 502);
   }
 
