@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getChatMembers, getKnownPeople, saveKnownPerson, deleteKnownPerson, type ChatMember, type KnownPerson } from "../api";
+import { getChatMembers, getKnownPeople, saveKnownPerson, deleteKnownPerson, isWebAuthenticated, type ChatMember, type KnownPerson } from "../api";
 import { memberKeys, peopleKeys } from "../queryKeys";
 
 interface PersonPickerProps {
@@ -218,7 +218,7 @@ export function PersonPicker({ existingTelegramIds, existingNames, onAdd, onClos
   const { data: knownData } = useQuery({
     queryKey: peopleKeys.known(),
     queryFn: getKnownPeople,
-    enabled: isTelegram,
+    enabled: isTelegram || isWebAuthenticated(),
   });
 
   const saveMutation = useMutation({

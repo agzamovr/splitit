@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { mockTelegram } from "./helpers";
+import { mockTelegram, mockWebSession } from "./helpers";
 
 async function addPersonViaPicker(page: Page, name: string) {
   await page.getByRole("button", { name: "Add Person" }).click();
@@ -297,6 +297,42 @@ test.describe("PersonPicker — suggested people", () => {
     await page.keyboard.press("Escape");
 
     await expect(editInput).not.toBeVisible();
+    await expect(page.getByText("Alice")).toBeVisible();
+  });
+});
+
+test.describe("PersonPicker — suggested people (web session)", () => {
+  test.beforeEach(async ({ page }) => {
+    let people: { name: string }[] = [{ name: "Alice" }];
+
+    await mockWebSession(page); // sets tg_session in localStorage, no Telegram WebApp
+
+    await page.route("/api/people", async (route) => {
+      const method = route.request().method();
+      if (method === "DELETE") {
+        const body = route.request().postDataJSON() as { name: string };
+        people = people.filter((p) => p.name.toLowerCase() !== body.name.toLowerCase());
+        await route.fulfill({ status: 200, body: "{}" });
+      } else if (method === "POST") {
+        const body = route.request().postDataJSON() as { name: string };
+        people = [body, ...people.filter((p) => p.name.toLowerCase() !== body.name.toLowerCase())];
+        await route.fulfill({ status: 200, body: "{}" });
+      } else {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ people }),
+        });
+      }
+    });
+
+    await page.goto("/new");
+  });
+
+  test("shows suggested people when authenticated via web session (no Telegram)", async ({ page }) => {
+    await page.getByRole("button", { name: "Add Person" }).click();
+    // The Remove button is unique to suggested-people rows
+    await expect(page.getByRole("button", { name: "Remove" })).toBeVisible();
     await expect(page.getByText("Alice")).toBeVisible();
   });
 });

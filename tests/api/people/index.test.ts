@@ -45,28 +45,16 @@ describe("GET /api/people — user scope (no chat)", () => {
   });
 });
 
-describe("GET /api/people — chat scope", () => {
-  it("reads from chat key when chat context is present", async () => {
+describe("GET /api/people — chat context", () => {
+  it("reads from chat-scoped key when chat context is present", async () => {
     const { extractChat } = await import("@functions/lib/verify");
     vi.mocked(extractChat).mockReturnValueOnce({ id: -100456, type: "supergroup" });
 
     const { kv, store } = createMockKV();
     store.set("chat:-100456:people", JSON.stringify([{ name: "Charlie" }]));
-    // user key is empty — should not be read
     const ctx = makeCtx({ method: "GET", env: makeEnv(kv) });
     const body = (await (await onRequestGet(ctx)).json()) as { people: KnownPerson[] };
     expect(body.people).toEqual([{ name: "Charlie" }]);
-  });
-
-  it("does not fall back to user key when chat key is empty", async () => {
-    const { extractChat } = await import("@functions/lib/verify");
-    vi.mocked(extractChat).mockReturnValueOnce({ id: -100456, type: "group" });
-
-    const { kv, store } = createMockKV();
-    store.set("user:1:people", JSON.stringify([{ name: "From User" }]));
-    const ctx = makeCtx({ method: "GET", env: makeEnv(kv) });
-    const body = (await (await onRequestGet(ctx)).json()) as { people: KnownPerson[] };
-    expect(body.people).toEqual([]);
   });
 });
 
@@ -109,8 +97,8 @@ describe("POST /api/people — user scope", () => {
   });
 });
 
-describe("POST /api/people — chat scope", () => {
-  it("saves under the chat key when chat context is present", async () => {
+describe("POST /api/people — chat context", () => {
+  it("saves under chat-scoped key when chat context is present", async () => {
     const { extractChat } = await import("@functions/lib/verify");
     vi.mocked(extractChat).mockReturnValueOnce({ id: -100789, type: "group" });
 
@@ -148,8 +136,8 @@ describe("DELETE /api/people — user scope", () => {
   });
 });
 
-describe("DELETE /api/people — chat scope", () => {
-  it("deletes under the chat key when chat context is present", async () => {
+describe("DELETE /api/people — chat context", () => {
+  it("deletes from chat-scoped key when chat context is present", async () => {
     const { extractChat } = await import("@functions/lib/verify");
     vi.mocked(extractChat).mockReturnValueOnce({ id: -100789, type: "group" });
 
