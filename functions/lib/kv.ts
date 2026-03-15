@@ -27,6 +27,16 @@ export async function upsertKnownPerson(kv: Env["SPLIT_BILLS"], key: string, per
   await kv.put(key, JSON.stringify([person, ...filtered].slice(0, MAX_KNOWN)));
 }
 
+export async function deleteKnownPerson(kv: Env["SPLIT_BILLS"], key: string, person: KnownPerson): Promise<void> {
+  const existing = await getKnownPeople(kv, key);
+  const filtered = existing.filter(p =>
+    person.telegramId != null
+      ? p.telegramId !== person.telegramId
+      : !(p.telegramId == null && p.name.toLowerCase() === person.name.toLowerCase())
+  );
+  await kv.put(key, JSON.stringify(filtered));
+}
+
 export const BILL_TTL = 60 * 60 * 24 * 7;
 
 export const billKey = (id: string) => `bill:${id}`;

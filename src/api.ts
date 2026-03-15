@@ -141,3 +141,7 @@ export function getKnownPeople(): Promise<{ people: KnownPerson[] }> {
 export function saveKnownPerson(person: KnownPerson): Promise<void> {
   return apiFetch("/api/people", { method: "POST", body: JSON.stringify(person) });
 }
+
+export function deleteKnownPerson(person: KnownPerson): Promise<void> {
+  return apiFetch("/api/people", { method: "DELETE", body: JSON.stringify(person) });
+}

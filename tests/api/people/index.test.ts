@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { onRequestGet, onRequestPost } from "@functions/api/people/index";
+import { onRequestGet, onRequestPost, onRequestDelete } from "@functions/api/people/index";
 import type { KnownPerson } from "@functions/lib/kv";
 import { createMockKV, makeEnv, makeCtx } from "../../helpers";
 
@@ -120,6 +120,47 @@ describe("POST /api/people — chat scope", () => {
 
     const saved = JSON.parse(store.get("chat:-100789:people")!) as KnownPerson[];
     expect(saved[0]).toEqual({ name: "Dave", telegramId: 55 });
+    expect(store.has("user:1:people")).toBe(false);
+  });
+});
+
+describe("DELETE /api/people — user scope", () => {
+  it("removes the person and returns 200", async () => {
+    const { kv, store } = createMockKV();
+    store.set("user:1:people", JSON.stringify([{ name: "Alice" }, { name: "Bob" }]));
+    const ctx = makeCtx({ method: "DELETE", env: makeEnv(kv), body: { name: "Alice" } });
+    const res = await onRequestDelete(ctx);
+    expect(res.status).toBe(200);
+    const remaining = JSON.parse(store.get("user:1:people")!) as KnownPerson[];
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].name).toBe("Bob");
+  });
+
+  it("returns 401 when auth fails", async () => {
+    const { requireUser } = await import("@functions/lib/auth");
+    vi.mocked(requireUser).mockResolvedValueOnce({
+      ok: false,
+      response: new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 }),
+    });
+    const { kv } = createMockKV();
+    const ctx = makeCtx({ method: "DELETE", env: makeEnv(kv), authHeader: "", body: { name: "X" } });
+    expect((await onRequestDelete(ctx)).status).toBe(401);
+  });
+});
+
+describe("DELETE /api/people — chat scope", () => {
+  it("deletes under the chat key when chat context is present", async () => {
+    const { extractChat } = await import("@functions/lib/verify");
+    vi.mocked(extractChat).mockReturnValueOnce({ id: -100789, type: "group" });
+
+    const { kv, store } = createMockKV();
+    store.set("chat:-100789:people", JSON.stringify([{ name: "Dave" }, { name: "Eve" }]));
+    const ctx = makeCtx({ method: "DELETE", env: makeEnv(kv), body: { name: "Dave" } });
+    await onRequestDelete(ctx);
+
+    const remaining = JSON.parse(store.get("chat:-100789:people")!) as KnownPerson[];
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].name).toBe("Eve");
     expect(store.has("user:1:people")).toBe(false);
   });
 });

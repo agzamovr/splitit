@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { mockTelegram } from "./helpers";
 
 async function addPersonViaPicker(page: Page, name: string) {
   await page.getByRole("button", { name: "Add Person" }).click();
@@ -50,6 +51,7 @@ test.describe("PersonPicker — opening and closing", () => {
     await page.getByRole("button", { name: "Add Person" }).click();
     await expect(page.getByRole("button", { name: "Done" })).toBeVisible();
   });
+
 });
 
 test.describe("PersonPicker — adding a custom person", () => {
@@ -224,5 +226,77 @@ test.describe("PersonPicker — integration with bill calculations", () => {
     // 1 person assigned to the expense; 50 / 1 = 50
     const personRows = page.locator("li", { has: page.getByPlaceholder("Name") });
     await expect(personRows.nth(0)).toContainText("50.00");
+  });
+});
+
+test.describe("PersonPicker — suggested people", () => {
+  test.beforeEach(async ({ page }) => {
+    // people is reset fresh for each test
+    let people: { name: string; telegramId?: number }[] = [{ name: "Alice" }];
+
+    // mockTelegram adds an init script that runs on the next goto, enabling isTelegram
+    await mockTelegram(page);
+
+    // Register /api/people after the global wildcard — Playwright uses LIFO so this wins
+    await page.route("/api/people", async (route) => {
+      const method = route.request().method();
+      if (method === "DELETE") {
+        const body = route.request().postDataJSON() as { name: string };
+        people = people.filter((p) => p.name.toLowerCase() !== body.name.toLowerCase());
+        await route.fulfill({ status: 200, body: "{}" });
+      } else if (method === "POST") {
+        const body = route.request().postDataJSON() as { name: string; telegramId?: number };
+        people = [body, ...people.filter((p) => p.name.toLowerCase() !== body.name.toLowerCase())];
+        await route.fulfill({ status: 200, body: "{}" });
+      } else {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ people }),
+        });
+      }
+    });
+
+    // Reload so the Telegram init script applies; now isTelegram is true
+    await page.goto("/new");
+  });
+
+  test("Remove button appears and clicking it removes the person from the list", async ({ page }) => {
+    await page.getByRole("button", { name: "Add Person" }).click();
+    const removeBtn = page.getByRole("button", { name: "Remove" });
+    await expect(removeBtn).toBeVisible();
+    await removeBtn.click();
+    await expect(page.getByText("Alice")).not.toBeVisible();
+  });
+
+  test("clicking Edit enters edit mode pre-filled and pressing Enter saves the renamed person", async ({
+    page,
+  }) => {
+    await page.getByRole("button", { name: "Add Person" }).click();
+    await page.getByRole("button", { name: "Edit" }).click();
+
+    // Edit input appears (no placeholder attribute, unlike the search input)
+    const editInput = page.locator("input[type='text']:not([placeholder])");
+    await expect(editInput).toBeVisible();
+    await expect(editInput).toHaveValue("Alice");
+
+    await editInput.clear();
+    await editInput.fill("Alicia");
+    await page.keyboard.press("Enter");
+
+    await expect(editInput).not.toBeVisible();
+    await expect(page.getByText("Alicia")).toBeVisible();
+  });
+
+  test("pressing Escape in edit mode cancels without changing the name", async ({ page }) => {
+    await page.getByRole("button", { name: "Add Person" }).click();
+    await page.getByRole("button", { name: "Edit" }).click();
+
+    const editInput = page.locator("input[type='text']:not([placeholder])");
+    await editInput.fill("Something else");
+    await page.keyboard.press("Escape");
+
+    await expect(editInput).not.toBeVisible();
+    await expect(page.getByText("Alice")).toBeVisible();
   });
 });

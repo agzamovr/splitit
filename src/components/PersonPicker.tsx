@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getChatMembers, getKnownPeople, saveKnownPerson, type ChatMember, type KnownPerson } from "../api";
+import { getChatMembers, getKnownPeople, saveKnownPerson, deleteKnownPerson, type ChatMember, type KnownPerson } from "../api";
 import { memberKeys, peopleKeys } from "../queryKeys";
 
 interface PersonPickerProps {
@@ -85,8 +85,124 @@ function MemberRow({
   );
 }
 
+function SuggestedRow({
+  person,
+  isAdded,
+  isEditing,
+  onSelect,
+  onDelete,
+  onEditStart,
+  onEditSave,
+  onEditCancel,
+}: {
+  person: KnownPerson;
+  isAdded: boolean;
+  isEditing: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+  onEditStart: () => void;
+  onEditSave: (name: string) => void;
+  onEditCancel: () => void;
+}) {
+  const [editValue, setEditValue] = useState(person.name);
+
+  useEffect(() => {
+    if (isEditing) setEditValue(person.name);
+  }, [isEditing, person.name]);
+
+  if (isEditing) {
+    return (
+      <li>
+        <div className="flex items-center gap-2 px-4 py-2">
+          <MemberAvatar name={editValue || person.name} photoUrl={person.photoUrl} />
+          <input
+            type="text"
+            value={editValue}
+            onChange={e => setEditValue(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter" && editValue.trim()) onEditSave(editValue.trim());
+              if (e.key === "Escape") onEditCancel();
+            }}
+            autoFocus
+            className="flex-1 min-w-0 px-2 py-1 bg-cream-dark/50 border border-espresso/20 rounded-lg text-base sm:text-sm text-espresso outline-none focus:border-espresso/30"
+          />
+          <button
+            type="button"
+            onClick={() => { if (editValue.trim()) onEditSave(editValue.trim()); }}
+            className="flex-shrink-0 w-7 h-7 flex items-center justify-center text-sage hover:text-sage-dark transition-colors"
+            aria-label="Save"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={onEditCancel}
+            className="flex-shrink-0 w-7 h-7 flex items-center justify-center text-espresso/40 hover:text-espresso/70 transition-colors"
+            aria-label="Cancel"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      <div className={`flex items-center gap-3 px-4 py-3 transition-colors ${isAdded ? "opacity-40" : ""}`}>
+        <button
+          type="button"
+          disabled={isAdded}
+          onClick={onSelect}
+          className={`flex items-center gap-3 flex-1 min-w-0 text-left ${
+            isAdded ? "cursor-default" : "hover:opacity-80 active:opacity-60"
+          }`}
+        >
+          <MemberAvatar name={person.name} photoUrl={person.photoUrl} />
+          <div className="flex-1 min-w-0">
+            <div className="text-base sm:text-sm font-medium text-espresso truncate">{person.name}</div>
+          </div>
+        </button>
+        {isAdded ? (
+          <span className="flex-shrink-0 text-xs text-espresso/40 font-medium">Added</span>
+        ) : (
+          <div className="flex items-center gap-0.5 flex-shrink-0">
+            {person.telegramId == null && (
+              <button
+                type="button"
+                onClick={onEditStart}
+                className="w-8 h-8 flex items-center justify-center text-espresso/30 hover:text-espresso/60 transition-colors rounded-lg hover:bg-espresso/8"
+                aria-label="Edit"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onDelete}
+              className="w-8 h-8 flex items-center justify-center text-espresso/30 hover:text-terracotta/70 transition-colors rounded-lg hover:bg-terracotta/8"
+              aria-label="Remove"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+    </li>
+  );
+}
+
 export function PersonPicker({ existingTelegramIds, existingNames, onAdd, onClose }: PersonPickerProps) {
   const [inputText, setInputText] = useState("");
+  const [editingKey, setEditingKey] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
@@ -107,6 +223,11 @@ export function PersonPicker({ existingTelegramIds, existingNames, onAdd, onClos
 
   const saveMutation = useMutation({
     mutationFn: saveKnownPerson,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: peopleKeys.known() }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteKnownPerson,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: peopleKeys.known() }),
   });
 
@@ -249,17 +370,25 @@ export function PersonPicker({ existingTelegramIds, existingNames, onAdd, onClos
                 <>
                   {showSections && <SectionHeader label="Suggested" />}
                   {filteredSuggested.map(person => {
+                    const key = person.telegramId != null ? `tg-${person.telegramId}` : `name-${person.name}`;
                     const isAdded =
                       person.telegramId != null
                         ? existingTelegramIds.has(person.telegramId)
                         : existingNames.has(person.name.toLowerCase());
                     return (
-                      <MemberRow
-                        key={person.telegramId != null ? `tg-${person.telegramId}` : `name-${person.name}`}
-                        name={person.name}
-                        photoUrl={person.photoUrl}
+                      <SuggestedRow
+                        key={key}
+                        person={person}
                         isAdded={isAdded}
-                        onClick={() => handleSelectKnown(person)}
+                        isEditing={editingKey === key}
+                        onSelect={() => handleSelectKnown(person)}
+                        onDelete={() => deleteMutation.mutate(person)}
+                        onEditStart={() => setEditingKey(key)}
+                        onEditSave={(name) => {
+                          setEditingKey(null);
+                          void deleteMutation.mutateAsync(person).then(() => saveMutation.mutate({ name }));
+                        }}
+                        onEditCancel={() => setEditingKey(null)}
                       />
                     );
                   })}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { peopleKey, getKnownPeople, upsertKnownPerson, type KnownPerson } from "@functions/lib/kv";
+import { peopleKey, getKnownPeople, upsertKnownPerson, deleteKnownPerson, type KnownPerson } from "@functions/lib/kv";
 import { createMockKV } from "../helpers";
 
 describe("peopleKey", () => {
@@ -101,5 +101,44 @@ describe("upsertKnownPerson", () => {
     await upsertKnownPerson(kv, "chat:-100:people", { name: "Dave" });
     expect(store.has("user:1:people")).toBe(false);
     expect(store.has("chat:-100:people")).toBe(true);
+  });
+});
+
+describe("deleteKnownPerson", () => {
+  it("removes a person by telegramId", async () => {
+    const { kv, store } = createMockKV();
+    store.set("user:1:people", JSON.stringify([
+      { name: "Alice", telegramId: 5 },
+      { name: "Bob" },
+    ]));
+    await deleteKnownPerson(kv, "user:1:people", { name: "Alice", telegramId: 5 });
+    const result = JSON.parse(store.get("user:1:people")!) as KnownPerson[];
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe("Bob");
+  });
+
+  it("removes a custom-named person case-insensitively", async () => {
+    const { kv, store } = createMockKV();
+    store.set("user:1:people", JSON.stringify([
+      { name: "Alice" },
+      { name: "Bob" },
+    ]));
+    await deleteKnownPerson(kv, "user:1:people", { name: "alice" });
+    const result = JSON.parse(store.get("user:1:people")!) as KnownPerson[];
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe("Bob");
+  });
+
+  it("does not remove a custom-named entry when matching by telegramId", async () => {
+    const { kv, store } = createMockKV();
+    store.set("user:1:people", JSON.stringify([
+      { name: "Alice" },
+      { name: "Alice", telegramId: 5 },
+    ]));
+    // Delete by telegramId — should only remove the telegramId entry
+    await deleteKnownPerson(kv, "user:1:people", { name: "Alice", telegramId: 5 });
+    const result = JSON.parse(store.get("user:1:people")!) as KnownPerson[];
+    expect(result).toHaveLength(1);
+    expect(result[0].telegramId).toBeUndefined();
   });
 });
