@@ -183,7 +183,9 @@ export function ExpenseForm() {
             disabled={shareStatus === "sending"}
             className="w-full py-3 rounded-xl bg-button text-button-text font-semibold text-sm disabled:opacity-60"
             onClick={() => {
-              const chatId = tg?.initDataUnsafe?.chat?.id ?? Number(sessionStorage.getItem("group_chat_id"));
+              const rawGroupChatId = sessionStorage.getItem("group_chat_id");
+              const sessionChatId = rawGroupChatId ? parseInt(rawGroupChatId, 10) : NaN;
+              const chatId = tg?.initDataUnsafe?.chat?.id ?? (Number.isFinite(sessionChatId) ? sessionChatId : undefined);
               const chatTitle = tg?.initDataUnsafe?.chat?.title;
               setShareStatus("sending");
               shareBill(billId, chatId, chatTitle)

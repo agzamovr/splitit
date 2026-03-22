@@ -23,7 +23,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const bill: Bill = JSON.parse(raw) as Bill;
   const body = await context.request.json<{ chatId?: number; chatTitle?: string }>();
   const chat = extractChat(auth.initData);
-  const chatId = body.chatId ?? chat?.id;
+  const chatId = body.chatId ?? chat?.id ?? bill.chatId;
   const chatTitle =
     body.chatTitle ??
     chat?.title ??
@@ -36,13 +36,18 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     });
   }
 
-  const appUrl = `${context.env.APP_URL}/new?billId=${id}`;
+  const appPath = `/new?billId=${id}`;
+  const button =
+    chatId < 0
+      ? { text: "Open Bill", url: `https://t.me/${context.env.BOT_USERNAME}/${context.env.BOT_APP_NAME}?startapp=${id}_${chatId}` }
+      : { text: "Open Bill", web_app: { url: `${context.env.APP_URL}${appPath}` } };
+
   const tgRes = await sendTelegramMessage(context.env.BOT_TOKEN, {
     chat_id: chatId,
     text: `${auth.user.first_name} is splitting a bill: *${bill.receiptTitle}*`,
     parse_mode: "Markdown",
     reply_markup: {
-      inline_keyboard: [[{ text: "Open Bill", web_app: { url: appUrl } }]],
+      inline_keyboard: [[button]],
     },
   });
 
