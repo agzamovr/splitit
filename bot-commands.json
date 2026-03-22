@@ -1,0 +1,5 @@
+[
+  { "command": "start", "description": "Open the app" },
+  { "command": "mybills", "description": "View your bills" },
+  { "command": "newbill", "description": "Create a new bill" }
+]
