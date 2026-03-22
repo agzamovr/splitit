@@ -22,7 +22,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
   const bill: Bill = JSON.parse(raw) as Bill;
   const body = await context.request.json<{ chatId?: number }>();
-  const chatId = body.chatId ?? extractChat(auth.initData)?.id;
+  const chat = extractChat(auth.initData);
+  const chatId = body.chatId ?? chat?.id;
+  const chatTitle = chat?.title;
 
   if (!chatId) {
     return new Response(JSON.stringify({ error: "No chat ID provided" }), {
@@ -50,6 +52,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   bill.chatId = chatId;
+  bill.chatTitle = chatTitle;
   await putBill(context.env.SPLIT_BILLS, bill);
 
   return new Response(JSON.stringify({ ok: true }), {

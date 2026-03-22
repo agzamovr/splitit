@@ -18,6 +18,7 @@ export interface Bill {
   id: string;
   creatorTelegramId: number;
   chatId?: number;
+  chatTitle?: string;
   createdAt: number;
   receiptTitle: string;
   expenses: Expense[];

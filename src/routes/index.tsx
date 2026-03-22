@@ -274,6 +274,7 @@ function BillsPage() {
                     <p className="text-xs text-espresso/40 mt-0.5">
                       {formatDate(bill.createdAt)}
                       {bill.people.length > 0 && ` · ${bill.people.length} people`}
+                      {bill.chatTitle && ` · ${bill.chatTitle}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

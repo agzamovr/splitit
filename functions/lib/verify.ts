@@ -43,10 +43,10 @@ export function extractUser(
   }
 }
 
-export function extractChat(initData: string): { id: number; type: string } | null {
+export function extractChat(initData: string): { id: number; type: string; title?: string } | null {
   try {
     const chatStr = new URLSearchParams(initData).get("chat");
-    return chatStr ? (JSON.parse(chatStr) as { id: number; type: string }) : null;
+    return chatStr ? (JSON.parse(chatStr) as { id: number; type: string; title?: string }) : null;
   } catch {
     return null;
   }
