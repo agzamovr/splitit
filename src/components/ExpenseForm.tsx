@@ -176,15 +176,17 @@ export function ExpenseForm() {
       )}
 
       {/* Share button — Telegram only, creator only, not in assignment mode */}
-      {tg && billId && isCreator && !computed.inAssignmentMode && !!tg.initDataUnsafe?.chat && (
+      {tg && billId && isCreator && !computed.inAssignmentMode &&
+        !!(tg.initDataUnsafe?.chat?.id ?? sessionStorage.getItem("group_chat_id")) && (
         <div className="px-4 pt-2 pb-4">
           <button
             disabled={shareStatus === "sending"}
             className="w-full py-3 rounded-xl bg-button text-button-text font-semibold text-sm disabled:opacity-60"
             onClick={() => {
-              const chatId = tg?.initDataUnsafe?.chat?.id;
+              const chatId = tg?.initDataUnsafe?.chat?.id ?? Number(sessionStorage.getItem("group_chat_id"));
+              const chatTitle = tg?.initDataUnsafe?.chat?.title;
               setShareStatus("sending");
-              shareBill(billId, chatId)
+              shareBill(billId, chatId, chatTitle)
                 .then(() => {
                   setShareStatus("sent");
                   setTimeout(() => setShareStatus("idle"), 2000);

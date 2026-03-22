@@ -75,7 +75,7 @@ describe("telegram_bot webhook", () => {
     expect(payload.chat_id).toBe(55);
     const button = payload.reply_markup.inline_keyboard[0][0];
     expect(button.text).toBe("Open Bill");
-    expect(button.url).toBe("https://t.me/TestBot/testapp?startapp=abc123");
+    expect(button.url).toBe("https://t.me/TestBot/testapp?startapp=abc123_55");
     expect(button.web_app).toBeUndefined();
   });
 
@@ -109,7 +109,7 @@ describe("telegram_bot webhook", () => {
     expect(payload.chat_id).toBe(77);
     const button = payload.reply_markup.inline_keyboard[0][0];
     expect(button.text).toBe("New Bill");
-    expect(button.url).toBe("https://t.me/TestBot/testapp");
+    expect(button.url).toBe("https://t.me/TestBot/testapp?startapp=newbill_77");
     expect(button.web_app).toBeUndefined();
   });
 
@@ -130,7 +130,7 @@ describe("telegram_bot webhook", () => {
     const button = JSON.parse(fetchMock.mock.calls[0][1].body as string).reply_markup
       .inline_keyboard[0][0];
     expect(button.text).toBe("New Bill");
-    expect(button.url).toBe("https://t.me/TestBot/testapp");
+    expect(button.url).toBe("https://t.me/TestBot/testapp?startapp=newbill_77");
     expect(button.web_app).toBeUndefined();
   });
 
@@ -148,9 +148,9 @@ describe("telegram_bot webhook", () => {
       expect(payload.chat_id).toBe(55);
       const [row0, row1] = payload.reply_markup.inline_keyboard;
       expect(row0[0].text).toBe("My Bills");
-      expect(row0[0].url).toBe("https://t.me/TestBot/testapp");
+      expect(row0[0].url).toBe("https://t.me/TestBot/testapp?startapp=mybills_55");
       expect(row1[0].text).toBe("New Bill");
-      expect(row1[0].url).toBe("https://t.me/TestBot/testapp");
+      expect(row1[0].url).toBe("https://t.me/TestBot/testapp?startapp=newbill_55");
     });
 
     it("in private sends web_app buttons for My Bills and New Bill", async () => {

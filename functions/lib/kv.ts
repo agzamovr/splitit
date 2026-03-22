@@ -39,6 +39,10 @@ export async function deleteKnownPerson(kv: Env["SPLIT_BILLS"], key: string, per
 
 export const BILL_TTL = 60 * 60 * 24 * 7;
 
+export function getChatTitle(kv: Env["SPLIT_BILLS"], chatId: number): Promise<string | null> {
+  return kv.get(`chat:${chatId}:title`);
+}
+
 export const billKey = (id: string) => `bill:${id}`;
 const userBillsKey = (telegramId: number) => `user:${telegramId}:bills`;
 

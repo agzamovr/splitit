@@ -1,6 +1,6 @@
 import type { Bill, Env } from "../../../lib/types";
 import { requireUser } from "../../../lib/auth";
-import { billKey, putBill } from "../../../lib/kv";
+import { billKey, putBill, getChatTitle } from "../../../lib/kv";
 import { sendTelegramMessage } from "../../../lib/telegram";
 import { extractChat } from "../../../lib/verify";
 
@@ -21,10 +21,13 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   const bill: Bill = JSON.parse(raw) as Bill;
-  const body = await context.request.json<{ chatId?: number }>();
+  const body = await context.request.json<{ chatId?: number; chatTitle?: string }>();
   const chat = extractChat(auth.initData);
   const chatId = body.chatId ?? chat?.id;
-  const chatTitle = chat?.title;
+  const chatTitle =
+    body.chatTitle ??
+    chat?.title ??
+    (chatId ? (await getChatTitle(context.env.SPLIT_BILLS, chatId)) ?? undefined : undefined);
 
   if (!chatId) {
     return new Response(JSON.stringify({ error: "No chat ID provided" }), {

@@ -3,7 +3,7 @@ import { sendTelegramMessage } from "./lib/telegram";
 
 interface TelegramUpdate {
   message?: {
-    chat: { id: number; type: string };
+    chat: { id: number; type: string; title?: string };
     from?: { id: number; first_name: string; username?: string };
     text?: string;
   };
@@ -24,8 +24,13 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
   const chatId = message.chat.id;
   const chatType = message.chat.type;
+  const chatTitle = message.chat.title;
   const text = message.text.trim().replace(/@\S+/, "");
-  const { BOT_TOKEN } = context.env;
+  const { BOT_TOKEN, SPLIT_BILLS } = context.env;
+
+  if (chatTitle && chatType !== "private") {
+    await SPLIT_BILLS.put(`chat:${chatId}:title`, chatTitle, { expirationTtl: 60 * 60 * 24 * 7 });
+  }
 
   if (text.startsWith("/start")) {
     const billId = text.split(" ")[1]?.trim();
@@ -34,7 +39,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         chat_id: chatId,
         text: "Tap below to open the bill:",
         reply_markup: {
-          inline_keyboard: [[appButton(chatType, context.env, `/new?billId=${billId}`, "Open Bill", billId)]],
+          inline_keyboard: [[appButton(chatType, context.env, `/new?billId=${billId}`, "Open Bill", `${billId}_${chatId}`)]],
         },
       });
     } else {
@@ -49,8 +54,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       text: "Tap below to view your bills or create a new one:",
       reply_markup: {
         inline_keyboard: [
-          [appButton(chatType, context.env, "/bills", "My Bills")],
-          [appButton(chatType, context.env, "/new", "New Bill")],
+          [appButton(chatType, context.env, "/bills", "My Bills", `mybills_${chatId}`)],
+          [appButton(chatType, context.env, "/new", "New Bill", `newbill_${chatId}`)],
         ],
       },
     });
@@ -59,7 +64,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       chat_id: chatId,
       text: "Tap below to create a new bill:",
       reply_markup: {
-        inline_keyboard: [[appButton(chatType, context.env, "/new", "New Bill")]],
+        inline_keyboard: [[appButton(chatType, context.env, "/new", "New Bill", `newbill_${chatId}`)]],
       },
     });
   }
