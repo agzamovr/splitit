@@ -102,8 +102,8 @@ export function patchBill(id: string, partial: Partial<BillPayload>): Promise<Bi
   return apiFetch(`/api/bills/${id}`, { method: "PATCH", body: JSON.stringify(partial) });
 }
 
-export function shareBill(id: string, chatId?: number): Promise<void> {
-  return apiFetch(`/api/bills/${id}/share`, { method: "POST", body: JSON.stringify({ chatId }) });
+export function shareBill(id: string, chatId?: number, chatTitle?: string): Promise<void> {
+  return apiFetch(`/api/bills/${id}/share`, { method: "POST", body: JSON.stringify({ chatId, chatTitle }) });
 }
 
 export function listBills(): Promise<Bill[]> {
