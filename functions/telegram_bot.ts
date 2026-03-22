@@ -15,7 +15,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   if (!message?.text) return new Response("ok");
 
   const chatId = message.chat.id;
-  const text = message.text.trim();
+  const text = message.text.trim().replace(/@\S+/, "");
 
   if (text.startsWith("/start")) {
     const billId = text.split(" ")[1]?.trim();

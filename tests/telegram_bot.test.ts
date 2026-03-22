@@ -5,7 +5,10 @@ import type { Env } from "@functions/lib/types";
 const ENV: Env = {
   SPLIT_BILLS: {} as KVNamespace,
   BOT_TOKEN: "test_token",
+  BOT_ID: "123",
+  BOT_USERNAME: "TestBot",
   APP_URL: "https://example.com",
+  GEMINI_API_KEY: "",
 };
 
 function makeCtx(body: unknown, env: Env = ENV) {
@@ -95,6 +98,16 @@ describe("telegram_bot webhook", () => {
     };
     expect(payload.chat_id).toBe(77);
     const button = payload.reply_markup.inline_keyboard[0][0];
+    expect(button.text).toBe("New Bill");
+    expect(button.web_app.url).toBe("https://example.com/new");
+  });
+
+  it("/newbill@botname (group format) sends New Bill button", async () => {
+    await onRequestPost(makeCtx(update("/newbill@SplitTheBillBot", 77)));
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const button = JSON.parse(fetchMock.mock.calls[0][1].body as string).reply_markup
+      .inline_keyboard[0][0];
     expect(button.text).toBe("New Bill");
     expect(button.web_app.url).toBe("https://example.com/new");
   });
