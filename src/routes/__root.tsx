@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect } from "react";
-import { createRootRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createRootRoute, Outlet } from "@tanstack/react-router";
 
 const TanStackRouterDevtools = import.meta.env.PROD
   ? () => null
@@ -14,8 +14,6 @@ export const Route = createRootRoute({
 });
 
 function RootLayout() {
-  const navigate = useNavigate();
-
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     if (!tg) return;
@@ -33,25 +31,7 @@ function RootLayout() {
     };
     applyScheme();
     tg.onEvent("themeChanged", applyScheme);
-
-    const startParam = tg.initDataUnsafe?.start_param;
-    if (!startParam) return;
-
-    if (startParam.startsWith("newbill_")) {
-      sessionStorage.setItem("group_chat_id", startParam.slice("newbill_".length));
-      void navigate({ to: "/new" });
-    } else if (startParam.startsWith("mybills_")) {
-      sessionStorage.setItem("group_chat_id", startParam.slice("mybills_".length));
-    } else {
-      const sep = startParam.lastIndexOf("_");
-      if (sep > 0) {
-        const billId = startParam.slice(0, sep);
-        const chatId = startParam.slice(sep + 1);
-        sessionStorage.setItem("group_chat_id", chatId);
-        void navigate({ to: "/new", search: { billId } });
-      }
-    }
-  }, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div
