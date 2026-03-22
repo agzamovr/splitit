@@ -7,6 +7,7 @@ const ENV: Env = {
   BOT_TOKEN: "test_token",
   BOT_ID: "123",
   BOT_USERNAME: "TestBot",
+  BOT_APP_NAME: "testapp",
   APP_URL: "https://example.com",
   GEMINI_API_KEY: "",
 };
@@ -63,7 +64,7 @@ describe("telegram_bot webhook", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("/start <billId> in group sends url button", async () => {
+  it("/start <billId> in group sends t.me url button", async () => {
     await onRequestPost(makeCtx(groupUpdate("/start abc123", 55)));
 
     expect(fetchMock).toHaveBeenCalledOnce();
@@ -74,7 +75,7 @@ describe("telegram_bot webhook", () => {
     expect(payload.chat_id).toBe(55);
     const button = payload.reply_markup.inline_keyboard[0][0];
     expect(button.text).toBe("Open Bill");
-    expect(button.url).toBe("https://example.com/new?billId=abc123");
+    expect(button.url).toBe("https://t.me/TestBot/testapp?startapp=abc123");
     expect(button.web_app).toBeUndefined();
   });
 
@@ -100,7 +101,7 @@ describe("telegram_bot webhook", () => {
     expect(payload.reply_markup).toBeUndefined();
   });
 
-  it("/newbill in group sends url button", async () => {
+  it("/newbill in group sends t.me url button", async () => {
     await onRequestPost(makeCtx(groupUpdate("/newbill", 77)));
 
     expect(fetchMock).toHaveBeenCalledOnce();
@@ -108,7 +109,7 @@ describe("telegram_bot webhook", () => {
     expect(payload.chat_id).toBe(77);
     const button = payload.reply_markup.inline_keyboard[0][0];
     expect(button.text).toBe("New Bill");
-    expect(button.url).toBe("https://example.com/new");
+    expect(button.url).toBe("https://t.me/TestBot/testapp");
     expect(button.web_app).toBeUndefined();
   });
 
@@ -122,14 +123,14 @@ describe("telegram_bot webhook", () => {
     expect(button.url).toBeUndefined();
   });
 
-  it("/newbill@botname (group format) sends url button", async () => {
+  it("/newbill@botname (group format) sends t.me url button", async () => {
     await onRequestPost(makeCtx(groupUpdate("/newbill@SplitTheBillBot", 77)));
 
     expect(fetchMock).toHaveBeenCalledOnce();
     const button = JSON.parse(fetchMock.mock.calls[0][1].body as string).reply_markup
       .inline_keyboard[0][0];
     expect(button.text).toBe("New Bill");
-    expect(button.url).toBe("https://example.com/new");
+    expect(button.url).toBe("https://t.me/TestBot/testapp");
     expect(button.web_app).toBeUndefined();
   });
 
@@ -139,7 +140,7 @@ describe("telegram_bot webhook", () => {
   });
 
   describe("/mybills", () => {
-    it("in group sends url buttons for My Bills and New Bill", async () => {
+    it("in group sends t.me url buttons for My Bills and New Bill", async () => {
       await onRequestPost(makeCtx(groupUpdate("/mybills", 55)));
 
       expect(fetchMock).toHaveBeenCalledOnce();
@@ -147,9 +148,9 @@ describe("telegram_bot webhook", () => {
       expect(payload.chat_id).toBe(55);
       const [row0, row1] = payload.reply_markup.inline_keyboard;
       expect(row0[0].text).toBe("My Bills");
-      expect(row0[0].url).toBe("https://example.com/bills");
+      expect(row0[0].url).toBe("https://t.me/TestBot/testapp");
       expect(row1[0].text).toBe("New Bill");
-      expect(row1[0].url).toBe("https://example.com/new");
+      expect(row1[0].url).toBe("https://t.me/TestBot/testapp");
     });
 
     it("in private sends web_app buttons for My Bills and New Bill", async () => {

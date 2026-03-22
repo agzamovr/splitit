@@ -9,8 +9,12 @@ interface TelegramUpdate {
   };
 }
 
-function appButton(chatType: string, url: string, label: string) {
-  return chatType === "private" ? { text: label, web_app: { url } } : { text: label, url };
+function appButton(chatType: string, env: Env, webAppPath: string, label: string, startParam?: string) {
+  if (chatType === "private") {
+    return { text: label, web_app: { url: `${env.APP_URL}${webAppPath}` } };
+  }
+  const tmeUrl = `https://t.me/${env.BOT_USERNAME}/${env.BOT_APP_NAME}`;
+  return { text: label, url: startParam ? `${tmeUrl}?startapp=${startParam}` : tmeUrl };
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
@@ -21,7 +25,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const chatId = message.chat.id;
   const chatType = message.chat.type;
   const text = message.text.trim().replace(/@\S+/, "");
-  const { APP_URL, BOT_TOKEN } = context.env;
+  const { BOT_TOKEN } = context.env;
 
   if (text.startsWith("/start")) {
     const billId = text.split(" ")[1]?.trim();
@@ -30,7 +34,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         chat_id: chatId,
         text: "Tap below to open the bill:",
         reply_markup: {
-          inline_keyboard: [[appButton(chatType, `${APP_URL}/new?billId=${billId}`, "Open Bill")]],
+          inline_keyboard: [[appButton(chatType, context.env, `/new?billId=${billId}`, "Open Bill", billId)]],
         },
       });
     } else {
@@ -45,8 +49,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       text: "Tap below to view your bills or create a new one:",
       reply_markup: {
         inline_keyboard: [
-          [appButton(chatType, `${APP_URL}/bills`, "My Bills")],
-          [appButton(chatType, `${APP_URL}/new`, "New Bill")],
+          [appButton(chatType, context.env, "/bills", "My Bills")],
+          [appButton(chatType, context.env, "/new", "New Bill")],
         ],
       },
     });
@@ -55,7 +59,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       chat_id: chatId,
       text: "Tap below to create a new bill:",
       reply_markup: {
-        inline_keyboard: [[appButton(chatType, `${APP_URL}/new`, "New Bill")]],
+        inline_keyboard: [[appButton(chatType, context.env, "/new", "New Bill")]],
       },
     });
   }

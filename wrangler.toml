@@ -5,6 +5,7 @@ pages_build_output_dir = "dist"
 APP_URL = "https://splitit-b60.pages.dev"
 BOT_ID = "8556025162"
 BOT_USERNAME = "ex_split_bot"
+BOT_APP_NAME = "splitit"
 
 [[kv_namespaces]]
 binding = "SPLIT_BILLS"
