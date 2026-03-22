@@ -9,49 +9,53 @@ interface TelegramUpdate {
   };
 }
 
+function appButton(chatType: string, url: string, label: string) {
+  return chatType === "private" ? { text: label, web_app: { url } } : { text: label, url };
+}
+
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const update = await context.request.json<TelegramUpdate>();
   const message = update.message;
   if (!message?.text) return new Response("ok");
 
   const chatId = message.chat.id;
+  const chatType = message.chat.type;
   const text = message.text.trim().replace(/@\S+/, "");
+  const { APP_URL, BOT_TOKEN } = context.env;
 
   if (text.startsWith("/start")) {
     const billId = text.split(" ")[1]?.trim();
     if (billId) {
-      await sendTelegramMessage(context.env.BOT_TOKEN, {
+      await sendTelegramMessage(BOT_TOKEN, {
         chat_id: chatId,
         text: "Tap below to open the bill:",
         reply_markup: {
-          inline_keyboard: [
-            [{ text: "Open Bill", web_app: { url: `${context.env.APP_URL}/new?billId=${billId}` } }],
-          ],
+          inline_keyboard: [[appButton(chatType, `${APP_URL}/new?billId=${billId}`, "Open Bill")]],
         },
       });
     } else {
-      await sendTelegramMessage(context.env.BOT_TOKEN, {
+      await sendTelegramMessage(BOT_TOKEN, {
         chat_id: chatId,
         text: "Add me to a group to split bills!",
       });
     }
   } else if (text === "/mybills") {
-    await sendTelegramMessage(context.env.BOT_TOKEN, {
+    await sendTelegramMessage(BOT_TOKEN, {
       chat_id: chatId,
       text: "Tap below to view your bills or create a new one:",
       reply_markup: {
         inline_keyboard: [
-          [{ text: "My Bills", web_app: { url: `${context.env.APP_URL}/bills` } }],
-          [{ text: "New Bill", web_app: { url: `${context.env.APP_URL}/new` } }],
+          [appButton(chatType, `${APP_URL}/bills`, "My Bills")],
+          [appButton(chatType, `${APP_URL}/new`, "New Bill")],
         ],
       },
     });
   } else if (text === "/newbill") {
-    await sendTelegramMessage(context.env.BOT_TOKEN, {
+    await sendTelegramMessage(BOT_TOKEN, {
       chat_id: chatId,
       text: "Tap below to create a new bill:",
       reply_markup: {
-        inline_keyboard: [[{ text: "New Bill", web_app: { url: `${context.env.APP_URL}/new` } }]],
+        inline_keyboard: [[appButton(chatType, `${APP_URL}/new`, "New Bill")]],
       },
     });
   }
