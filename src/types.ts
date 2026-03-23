@@ -22,5 +22,8 @@ export type AssignmentMode =
   | { type: "item"; itemId: string }
   | { type: "person"; personId: string };
 
-let nextId = 0;
-export const genId = () => `id-${++nextId}`;
+export function genId(): string {
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
